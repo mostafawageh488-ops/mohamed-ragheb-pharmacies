@@ -1,0 +1,144 @@
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.login-modal {
+  background: #ffffff;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  text-align: right;
+  direction: rtl;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.login-icon-container {
+  width: 80px;
+  height: 80px;
+  background-color: #fff7ed;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.login-title {
+  font-size: 2.2rem;
+  color: #0f172a;
+  font-weight: 800;
+  margin: 0 0 5px 0;
+}
+
+.login-subtitle {
+  color: #64748b;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.login-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-label {
+  font-size: 1.1rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-icon {
+  position: absolute;
+  right: 15px;
+  color: #94a3b8;
+}
+
+.login-input {
+  width: 100%;
+  padding: 16px 45px 16px 16px;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+  font-size: 1.2rem;
+  font-family: inherit;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.login-input:focus {
+  border-color: #ea580c;
+  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.1);
+}
+
+.login-submit-btn {
+  background: linear-gradient(135deg, #d97706, #ea580c);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 18px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: transform 0.2s, opacity 0.2s;
+  font-family: inherit;
+}
+
+.login-submit-btn:active {
+  transform: scale(0.98);
+}
+
+.login-submit-btn:hover {
+  opacity: 0.9;
+}
+
+.login-error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  padding: 15px;
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: 1px dashed #fca5a5;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
