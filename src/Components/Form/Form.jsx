@@ -164,30 +164,19 @@ const Form = () => {
   return (
     <div className="form-page-container">
       <div className="form-wrapper">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexDirection: 'row-reverse' }}>
-            <div style={{ 
-              width: '100px', 
-              height: '100px', 
-              borderRadius: '50%', 
-              backgroundColor: '#fff',
-              border: '3px solid #ea580c',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
-            }}>
+        <div className="form-header-row">
+          <div className="form-header-branding">
+            <div className="form-brand-logo">
               <img src="/logo.png" alt="Mohammed Ragheb Pharmacies Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <h1 className="form-title" style={{ marginBottom: '5px', fontSize: '3.2rem', color: '#c2410c' }}>بيانات المريض</h1>
-              <h2 style={{ fontSize: '1.4rem', color: '#1e3a8a', fontWeight: '700', margin: 0 }}>صيدليات محمد راغب</h2>
+            <div className="form-brand-text">
+              <h1 className="form-main-title">بيانات المريض</h1>
+              <h2 className="form-sub-title">صيدليات محمد راغب</h2>
             </div>
           </div>
           
           {isOffline && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: '#ef4444', backgroundColor: '#fee2e2', padding: '1rem 1.5rem', borderRadius: '20px', fontSize: '1.2rem', fontWeight: 'bold' }}>
+            <div className="offline-badge">
               <WifiOff size={24} /> أوفلاين ({offlineQueueCount})
             </div>
           )}

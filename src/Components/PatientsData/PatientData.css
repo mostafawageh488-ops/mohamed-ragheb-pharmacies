@@ -520,6 +520,144 @@
   flex-direction: row;
 }
 
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .records-container {
+    padding: 10px;
+  }
+
+  .brand-hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 20px;
+    border-radius: 16px;
+    gap: 15px;
+  }
+
+  .brand-logo-shell {
+    margin: 0 auto;
+    width: 70px;
+    height: 70px;
+  }
+
+  .brand-arabic-title {
+    font-size: 1.8rem;
+  }
+
+  .brand-english-title {
+    font-size: 1.1rem;
+  }
+
+  .brand-established {
+    font-size: 1rem;
+  }
+
+  .search-shell {
+    flex-direction: column;
+    height: auto;
+    padding: 15px;
+    border-radius: 20px;
+    gap: 15px;
+  }
+
+  .search-input {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 1.2rem;
+  }
+
+  .action-buttons-container {
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .filter-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+  }
+
+  .patient-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .card-top-row {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+  }
+
+  .patient-identity {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .patient-name-block {
+    text-align: center;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-icon-btn {
+    width: 50px;
+    height: 50px;
+  }
+
+  .metadata-row {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .medication-badge {
+    flex-direction: column;
+    text-align: center;
+    font-size: 1.1rem;
+    padding: 15px;
+    border-radius: 12px;
+  }
+
+  .missing-action-row {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .wa-msg-btn, .resolve-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.2rem;
+    border-radius: 12px;
+  }
+
+  .modal-content {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .pin-input {
+    font-size: 2rem;
+    letter-spacing: 15px;
+    height: 60px;
+  }
+
+  .order-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .order-info, .order-patient-info {
+    text-align: center;
+    justify-content: center;
+  }
+}
+
 .order-actions {
   display: flex;
   gap: 10px;
