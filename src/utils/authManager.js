@@ -1,43 +1,62 @@
-const DEFAULT_USERS = {
-  "MWS2005": "1996",
-  "mostafa.com": "2005"
-};
+import { supabase } from './supabaseClient';
 
-const AUTH_STORAGE_KEY = 'mragheb_app_credentials';
+const DEFAULT_USERS = [
+  { id: 1, username: 'MWS2005', password: '1996' },
+  { id: 2, username: 'mostafa.com', password: '2005' }
+];
 
-export const getUsers = () => {
+// Helper to seed defaults if table is empty
+const seedDefaultsIfNeeded = async () => {
   try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      return { ...DEFAULT_USERS, ...JSON.parse(stored) };
+    const { count } = await supabase.from('app_users').select('*', { count: 'exact', head: true });
+    if (count === 0) {
+      await supabase.from('app_users').insert(DEFAULT_USERS);
     }
   } catch (e) {
-    console.error("Error reading auth data", e);
+    console.error("Error seeding defaults", e);
   }
-  return DEFAULT_USERS;
 };
 
-export const authenticate = (username, password) => {
-  const users = getUsers();
-  const validPass = users[username];
-  
-  if (validPass && validPass === password) {
-    // Return user role info
-    return {
-      username,
-      isAdmin: username === 'mostafa.com'
-    };
+export const getAllUsers = async () => {
+  try {
+    const { data, error } = await supabase.from('app_users').select('username');
+    if (error) throw error;
+    return data.map(u => u.username);
+  } catch (e) {
+    console.error("Error fetching users", e);
+    return ['MWS2005', 'mostafa.com'];
+  }
+};
+
+export const authenticate = async (username, password) => {
+  await seedDefaultsIfNeeded();
+  try {
+    const { data, error } = await supabase.from('app_users')
+      .select('*')
+      .eq('username', username)
+      .single();
+      
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 is '0 rows'
+    
+    if (data && data.password === password) {
+      return {
+        username,
+        isAdmin: username === 'mostafa.com'
+      };
+    }
+  } catch (e) {
+    console.error("Authentication error", e);
   }
   return null;
 };
 
-export const updatePassword = (username, newPassword) => {
+export const updatePassword = async (username, newPassword) => {
   try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    const customUsers = stored ? JSON.parse(stored) : {};
-    
-    customUsers[username] = newPassword;
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(customUsers));
+    const { error } = await supabase.from('app_users')
+      .update({ password: newPassword })
+      .eq('username', username);
+      
+    if (error) throw error;
     return true;
   } catch (e) {
     console.error("Error updating password", e);

@@ -9,11 +9,11 @@ const LoginModal = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
   const [isShaking, setIsShaking] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    const user = authenticate(username.trim(), password);
+    const user = await authenticate(username.trim(), password);
     if (user) {
       onLoginSuccess(user);
     } else {

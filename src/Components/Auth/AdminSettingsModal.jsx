@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { updatePassword, getUsers } from '../../utils/authManager';
+import React, { useState, useEffect } from 'react';
+import { updatePassword, getAllUsers } from '../../utils/authManager';
 import { Shield, KeyRound, CheckCircle2, XCircle } from 'lucide-react';
 import './AdminSettingsModal.css';
 
@@ -7,16 +7,25 @@ const AdminSettingsModal = ({ onClose }) => {
   const [selectedUser, setSelectedUser] = useState('MWS2005');
   const [newPassword, setNewPassword] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
-  const users = Object.keys(getUsers());
+  const [users, setUsers] = useState([]);
 
-  const handleUpdate = (e) => {
+  useEffect(() => {
+    const loadUsers = async () => {
+      const dbUsers = await getAllUsers();
+      setUsers(dbUsers);
+      if (dbUsers.length > 0) setSelectedUser(dbUsers[0]);
+    };
+    loadUsers();
+  }, []);
+
+  const handleUpdate = async (e) => {
     e.preventDefault();
     if (!newPassword.trim()) {
       setStatus({ type: 'error', message: 'يرجى إدخال كلمة مرور جديدة' });
       return;
     }
 
-    const success = updatePassword(selectedUser, newPassword.trim());
+    const success = await updatePassword(selectedUser, newPassword.trim());
     if (success) {
       setStatus({ type: 'success', message: `تم تحديث كلمة المرور للمستخدم ${selectedUser} بنجاح` });
       setNewPassword('');
