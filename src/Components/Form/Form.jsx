@@ -117,7 +117,10 @@ const Form = () => {
         
         setStatus({ type: 'error', message: "⚠️ أنت أوفلاين: تم الحفظ مؤقتاً وسيتم الرفع عند عودة الإنترنت." });
         if (withWhatsApp) {
-          const message = encodeURIComponent(`مرحباً بك في صيدليات محمد راغب، ${patientDataToSave.name}! نحن سعداء بخدمتك.`);
+          const message = encodeURIComponent(`أهلاً بحضرتك ${patientDataToSave.name}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
+ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
+لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
+📞 0109109838`);
           let formattedPhone = patientDataToSave.phone;
           if (formattedPhone.startsWith('0')) formattedPhone = '2' + formattedPhone;
           window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
@@ -144,7 +147,10 @@ const Form = () => {
       if (withWhatsApp && patientDataToSave.phone) {
         let formattedPhone = patientDataToSave.phone;
         if (formattedPhone.startsWith('0')) formattedPhone = '2' + formattedPhone;
-        const message = encodeURIComponent(`مرحباً بك في صيدليات محمد راغب، ${patientDataToSave.name}! نحن سعداء بخدمتك.`);
+        const message = encodeURIComponent(`أهلاً بحضرتك ${patientDataToSave.name}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
+ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
+لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
+📞 0109109838`);
         const waUrl = `https://wa.me/${formattedPhone}?text=${message}`;
         window.open(waUrl, '_blank');
       }

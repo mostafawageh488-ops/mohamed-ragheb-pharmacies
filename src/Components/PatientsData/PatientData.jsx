@@ -143,7 +143,8 @@ const PatientData = () => {
 
   const handleAvailabilityMessage = (patient) => {
     updatePatient(patient.id, { message_sent_at: Date.now() });
-    const message = `مرحباً بك في صيدليات محمد راغب، ${patient.name}! الأدوية الخاصة بك (${patient.need}) متوفرة الآن ويمكنك استلامها.`;
+    const message = `أهلاً بحضرتك ${patient.name}.. اهتماماً منا بتوفير كل ما يخص صحتك فور إتاحته، نبشرك بأن ${patient.need} متوفر الآن في صيدليات د. محمد راغب قريطم (خلف المستشفى العام).
+بانتظار زيارتك، مع أمنياتنا القلبية لك بالشفاء والعافية.`;
     let phone = patient.phone.replace(/\s/g, "");
     if (phone.startsWith('0')) phone = '2' + phone;
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
