@@ -31,7 +31,7 @@ const LoginModal = ({ onLoginSuccess }) => {
             <Lock size={32} color="#ea580c" />
           </div>
           <h2 className="login-title">تسجيل الدخول</h2>
-          <p className="login-subtitle">نظام صيدليات محمد راغب</p>
+          <p className="login-subtitle">نظام صيدليات دكتور محمد راغب قريطم</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">

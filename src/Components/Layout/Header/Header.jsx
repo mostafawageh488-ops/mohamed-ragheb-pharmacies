@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { PlusCircle, Users, Settings, UserCircle } from 'lucide-react';
+import { PlusCircle, Users, Settings, UserCircle, Activity } from 'lucide-react';
 import AdminSettingsModal from '../../Auth/AdminSettingsModal';
 
 const Header = ({ user }) => {
@@ -99,6 +99,24 @@ const Header = ({ user }) => {
           >
             <Users size={20} style={{ marginBottom: '2px' }} />
             <span>السجلات</span>
+          </Link>
+          <Link 
+            to="/chronic" 
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isActive('/chronic') ? '#facc15' : '#ffffff',
+              textDecoration: 'none',
+              fontWeight: '600',
+              backgroundColor: isActive('/chronic') ? '#006064' : 'transparent',
+              transition: 'all 0.3s'
+            }}
+          >
+            <Activity size={20} style={{ marginBottom: '2px' }} />
+            <span>الأمراض المزمنة</span>
           </Link>
         </nav>
       </div>

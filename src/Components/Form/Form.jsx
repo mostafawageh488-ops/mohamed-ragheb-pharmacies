@@ -7,11 +7,16 @@ const Form = () => {
   const INITIAL_FORM = {
     name: '',
     phone: '',
+    phone2: '',
     deposit: '',
     address: '',
     need: '',
-    branch: 'فرع ١ : حوش عيسى - خلف المستشفى العام'
+    branch: 'فرع ١ : حوش عيسى - خلف المستشفى العام',
+    reminder_days: '',
   };
+  const [chronicMeds, setChronicMeds] = useState([]);
+  const [currentMedName, setCurrentMedName] = useState('');
+  const [currentMedType, setCurrentMedType] = useState('علبة');
 
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [status, setStatus] = useState({ type: '', message: '' });
@@ -92,17 +97,20 @@ const Form = () => {
 
   const handleSave = async (withWhatsApp) => {
     if (!formData.name || !formData.phone) {
-      setStatus({ type: 'error', message: 'يرجى إدخال اسم المريض ورقم الهاتف أولاً.' });
+      setStatus({ type: 'error', message: 'يرجى إدخال اسم العميل ورقم الهاتف أولاً.' });
       return;
     }
 
     const patientDataToSave = {
       name: formData.name.trim(),
       phone: formData.phone.trim(),
+      phone2: formData.phone2 ? formData.phone2.trim() : null,
       deposit: formData.deposit.trim() ? parseFloat(formData.deposit) : null,
       address: formData.address.trim(),
       need: formData.need.trim(),
-      branch: formData.branch
+      branch: formData.branch,
+      chronic_meds: chronicMeds.length > 0 ? chronicMeds : null,
+      reminder_days: formData.reminder_days ? parseInt(formData.reminder_days, 10) : null
     };
 
     if (isOffline) {
@@ -142,7 +150,8 @@ const Form = () => {
 
       setIsSubmitting(false);
       setFormData(INITIAL_FORM);
-      setStatus({ type: 'success', message: 'تم حفظ بيانات المريض بنجاح!' });
+      setChronicMeds([]);
+      setStatus({ type: 'success', message: 'تم حفظ بيانات العميل بنجاح!' });
       
       if (withWhatsApp && patientDataToSave.phone) {
         let formattedPhone = patientDataToSave.phone;
@@ -176,8 +185,8 @@ const Form = () => {
               <img src="/logo.png" alt="Mohammed Ragheb Pharmacies Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div className="form-brand-text">
-              <h1 className="form-main-title">بيانات المريض</h1>
-              <h2 className="form-sub-title">صيدليات محمد راغب</h2>
+              <h1 className="form-main-title">بيانات العميل</h1>
+              <h2 className="form-sub-title">صيدليات دكتور محمد راغب قريطم</h2>
             </div>
           </div>
           
@@ -198,16 +207,23 @@ const Form = () => {
         <div className="form-content">
           <div className="form-group">
             <label className="form-label" htmlFor="name">
-              اسم المريض <span className="req">*</span> <User size={14} className="label-icon" />
+              اسم العميل <span className="req">*</span> <User size={14} className="label-icon" />
             </label>
             <input type="text" id="name" name="name" className="form-input" placeholder="مثال: أحمد محمد" value={formData.name} onChange={handleChange} />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="phone">
-              رقم الموبايل <span className="req">*</span> <Phone size={14} className="label-icon" />
+              رقم الموبايل 1 <span className="req">*</span> <Phone size={14} className="label-icon" />
             </label>
             <input type="tel" id="phone" name="phone" className="form-input" placeholder="01009109838" value={formData.phone} onChange={handleChange} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="phone2">
+              رقم الموبايل 2 <span>(اختياري)</span> <Phone size={14} className="label-icon" />
+            </label>
+            <input type="tel" id="phone2" name="phone2" className="form-input" placeholder="01xxxxxxxxx" value={formData.phone2} onChange={handleChange} />
           </div>
 
           <div className="form-group">
@@ -238,6 +254,69 @@ const Form = () => {
               نواقص أدوية <span>(اختياري)</span> <Pill size={14} className="label-icon" />
             </label>
             <input type="text" id="need" name="need" className="form-input" placeholder="مثال: فيتامين د، بخاخ حساسية" value={formData.need} onChange={handleChange} />
+          </div>
+
+          {/* Chronic Meds Section */}
+          <div className="chronic-meds-section">
+            <h3 className="section-title">أدوية الأمراض المزمنة <span>(اختياري)</span></h3>
+            
+            <div className="meds-input-row">
+              <input 
+                type="text" 
+                className="form-input med-name-input" 
+                placeholder="اسم الدواء..." 
+                value={currentMedName} 
+                onChange={(e) => setCurrentMedName(e.target.value)} 
+              />
+              <select 
+                className="form-input med-type-select" 
+                value={currentMedType} 
+                onChange={(e) => setCurrentMedType(e.target.value)}
+              >
+                <option value="علبة">علبة</option>
+                <option value="شريط">شريط</option>
+              </select>
+              <button 
+                type="button" 
+                className="btn btn-add-med" 
+                onClick={() => {
+                  if(currentMedName.trim()) {
+                    setChronicMeds([...chronicMeds, { name: currentMedName.trim(), type: currentMedType }]);
+                    setCurrentMedName('');
+                  }
+                }}
+              >
+                إضافة
+              </button>
+            </div>
+            
+            {chronicMeds.length > 0 && (
+              <ul className="meds-list">
+                {chronicMeds.map((med, idx) => (
+                  <li key={idx} className="med-item">
+                    <span>{med.name} - <strong>{med.type}</strong></span>
+                    <button type="button" className="btn-remove-med" onClick={() => {
+                      setChronicMeds(chronicMeds.filter((_, i) => i !== idx));
+                    }}>×</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label" htmlFor="reminder_days">
+                عداد التنبيه (بالأيام) <span>لتذكير العميل بصرف علاجه</span>
+              </label>
+              <input 
+                type="number" 
+                id="reminder_days" 
+                name="reminder_days" 
+                className="form-input" 
+                placeholder="مثال: 30 (شهر) أو 7 (أسبوع)" 
+                value={formData.reminder_days} 
+                onChange={handleChange} 
+              />
+            </div>
           </div>
 
           <div className="buttons-container">

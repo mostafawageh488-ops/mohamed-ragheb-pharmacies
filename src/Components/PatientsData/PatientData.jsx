@@ -187,7 +187,7 @@ const PatientData = () => {
     const html = `
       <html dir="rtl" lang="ar">
         <head>
-          <title>تقرير سجلات المرضى - صيدليات محمد راغب</title>
+          <title>تقرير سجلات العملاء - صيدليات دكتور محمد راغب قريطم</title>
           <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
           <style>
             body { font-family: 'Cairo', sans-serif; background-color: #FFFFFF; margin: 0; padding: 40px; color: #0F172A; }
@@ -213,14 +213,14 @@ const PatientData = () => {
         <body>
           <div class="header">
             <div class="logo-placeholder">💊</div>
-            <h1>صيدليات محمد راغب</h1>
+            <h1>صيدليات دكتور محمد راغب قريطم</h1>
             <p>تقرير نظام إدارة السجلات الطبية (PDF)</p>
             <div class="date">تاريخ التقرير: ${new Intl.DateTimeFormat("ar-EG", { dateStyle: 'full' }).format(new Date())}</div>
           </div>
           <table>
             <thead>
               <tr>
-                <th>اسم المريض</th>
+                <th>اسم العميل</th>
                 <th>الموبايل</th>
                 <th>الحساب</th>
                 <th>العنوان</th>
@@ -232,7 +232,7 @@ const PatientData = () => {
             <tbody>${rowsHtml}</tbody>
           </table>
           <div class="footer">
-            تم إنشاء هذا التقرير تلقائياً بواسطة نظام إدارة صيدليات محمد راغب<br/>
+            تم إنشاء هذا التقرير تلقائياً بواسطة نظام إدارة صيدليات دكتور محمد راغب قريطم<br/>
             <b>Designed By Dr. Mostafa Wageh Sarhan</b>
           </div>
           <script>
@@ -259,9 +259,9 @@ const PatientData = () => {
           </div>
           <div className="brand-copy">
             <h1 className={`brand-arabic-title ${showRecycleBin ? 'recycle-title' : ''}`}>
-              {showRecycleBin ? "سلة المهملات" : "سجل المرضى"}
+              {showRecycleBin ? "سلة المهملات" : "سجل العملاء"}
             </h1>
-            <h2 className="brand-english-title">صيدليات محمد راغب</h2>
+            <h2 className="brand-english-title">صيدليات دكتور محمد راغب قريطم</h2>
             <p className="brand-established">
               {showRecycleBin ? "الاحتفاظ بالسجلات المحذوفة لـ 7 أيام" : "نظام إدارة السجلات الطبية"}
             </p>
@@ -404,13 +404,13 @@ function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMed
   let timeDisplay = "";
   if (hoursSinceMessage !== null && minutesSinceMessage !== null) {
     if (hoursSinceMessage >= 24) {
-      timeDisplay = `⚠️ تحذير: تم إبلاغ المريض منذ ${hoursSinceMessage} ساعة ولم يستلم!`;
+      timeDisplay = `⚠️ تحذير: تم إبلاغ العميل منذ ${hoursSinceMessage} ساعة ولم يستلم!`;
     } else if (hoursSinceMessage >= 1) {
-      timeDisplay = `⏳ تم إبلاغ المريض منذ ${hoursSinceMessage} ساعة`;
+      timeDisplay = `⏳ تم إبلاغ العميل منذ ${hoursSinceMessage} ساعة`;
     } else if (minutesSinceMessage > 0) {
-      timeDisplay = `⏳ تم إبلاغ المريض منذ ${minutesSinceMessage} دقيقة`;
+      timeDisplay = `⏳ تم إبلاغ العميل منذ ${minutesSinceMessage} دقيقة`;
     } else {
-      timeDisplay = `⏳ تم إبلاغ المريض الآن`;
+      timeDisplay = `⏳ تم إبلاغ العميل الآن`;
     }
   }
 
@@ -550,7 +550,7 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <div>
-            <label className="form-label" style={{ marginBottom: '5px' }}>اسم المريض</label>
+            <label className="form-label" style={{ marginBottom: '5px' }}>اسم العميل</label>
             <input name="name" className="form-input" value={formData.name} onChange={handleChange} />
           </div>
           <div>
@@ -631,7 +631,7 @@ function OrdersModal({ patients, onClose, onMarkReceived, onMedicationMessage })
 function EmptyState({ hasSearch, showOnlyMissing, showRecycleBin }) {
   const icon = showRecycleBin ? <Trash2 size={35} /> : (showOnlyMissing ? <CheckSquare size={35} /> : (hasSearch ? <Search size={35} /> : <Users size={35} />));
   const title = showRecycleBin ? "سلة المهملات فارغة" : (showOnlyMissing ? "لا توجد نواقص حالياً!" : (hasSearch ? "لا توجد نتائج مطابقة" : "لا توجد سجلات بعد"));
-  const desc = showRecycleBin ? "السجلات المحذوفة تظهر هنا لمدة 7 أيام قبل الحذف النهائي." : (showOnlyMissing ? "عاش! مفيش أي مريض مستني أدوية." : "سيظهر المرضى الذين تسجلهم هنا فوراً.");
+  const desc = showRecycleBin ? "السجلات المحذوفة تظهر هنا لمدة 7 أيام قبل الحذف النهائي." : (showOnlyMissing ? "عاش! مفيش أي مريض مستني أدوية." : "سيظهر العملاء الذين تسجلهم هنا فوراً.");
 
   return (
     <div className="empty-state">

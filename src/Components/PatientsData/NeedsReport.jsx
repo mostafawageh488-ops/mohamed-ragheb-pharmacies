@@ -33,7 +33,7 @@ const NeedsReport = () => {
 
   const sendAvailableWhatsApp = (patient) => {
     if (!patient.phone) {
-      alert('لا يوجد رقم هاتف لهذا المريض.');
+      alert('لا يوجد رقم هاتف لهذا العميل.');
       return;
     }
     
@@ -42,7 +42,7 @@ const NeedsReport = () => {
       formattedPhone = '2' + formattedPhone;
     }
     
-    const message = encodeURIComponent(`مرحباً ${patient.name || 'عميلنا العزيز'}، نود إعلامك أن الأدوية التي طلبتها (${patient.need}) متوفرة الآن في صيدليات محمد راغب فرع ${patient.branch || ''}. نتشرف بزيارتك!`);
+    const message = encodeURIComponent(`مرحباً ${patient.name || 'عميلنا العزيز'}، نود إعلامك أن الأدوية التي طلبتها (${patient.need}) متوفرة الآن في صيدليات دكتور محمد راغب قريطم فرع ${patient.branch || ''}. نتشرف بزيارتك!`);
     const waUrl = `https://wa.me/${formattedPhone}?text=${message}`;
     window.open(waUrl, '_blank');
   };

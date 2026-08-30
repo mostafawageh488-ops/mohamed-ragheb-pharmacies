@@ -5,6 +5,7 @@ import Footer from './Components/Layout/Footer/Footer';
 import Form from './Components/Form/Form';
 import PatientData from './Components/PatientsData/PatientData';
 import NeedsReport from './Components/PatientsData/NeedsReport';
+import ChronicPatients from './Components/PatientsData/ChronicPatients';
 import LoginModal from './Components/Auth/LoginModal';
 import './App.css';
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/" element={<Form />} />
           <Route path="/patients" element={<PatientData />} />
           <Route path="/needs" element={<NeedsReport />} />
+          <Route path="/chronic" element={<ChronicPatients />} />
         </Routes>
       </main>
       <Footer />
