@@ -151,6 +151,16 @@ const PatientData = () => {
     window.open(whatsappUrl, '_blank');
   };
 
+  const handleSendWelcome = (patient) => {
+    let phone = patient.phone.replace(/\s/g, "");
+    if (phone.startsWith('0')) phone = '2' + phone;
+    const message = encodeURIComponent(`أهلاً بحضرتك ${patient.name}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
+ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
+لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
+📞 0109109838`);
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+  };
+
   const handleVerifyPin = () => {
     if (pin === "1996") {
       setIsExportModalVisible(false);
@@ -340,6 +350,7 @@ const PatientData = () => {
                 onEdit={() => setEditingPatient(patient)} 
                 onMedicationMessage={() => handleAvailabilityMessage(patient)}
                 onMarkReceived={() => handleMarkMedsReceived(patient)}
+                onSendWelcome={() => handleSendWelcome(patient)}
               />
             ))
           )}
@@ -390,7 +401,7 @@ const PatientData = () => {
   );
 };
 
-function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMedicationMessage, onMarkReceived }) {
+function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMedicationMessage, onMarkReceived, onSendWelcome }) {
   const hasMissingMedications = Boolean(patient.need?.trim());
   const isDeleted = patient.is_deleted;
   
@@ -438,9 +449,10 @@ function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMed
             </>
           ) : (
             <>
-              <a href={`tel:${(patient.phone || '').replace(/\s/g, '')}`} className="action-icon-btn btn-success" style={{ textDecoration: 'none' }}><PhoneIcon size={20} /></a>
-              <button onClick={onEdit} className="action-icon-btn btn-info"><Edit2 size={20} /></button>
-              <button onClick={onDelete} className="action-icon-btn btn-danger"><Trash2 size={20} /></button>
+              <button onClick={onSendWelcome} className="action-icon-btn" style={{ backgroundColor: '#10B981', color: 'white' }} title="إرسال رسالة ترحيب"><MessageCircle size={20} /></button>
+              <a href={`tel:${(patient.phone || '').replace(/\s/g, '')}`} className="action-icon-btn btn-success" style={{ textDecoration: 'none' }} title="اتصال"><PhoneIcon size={20} /></a>
+              <button onClick={onEdit} className="action-icon-btn btn-info" title="تعديل"><Edit2 size={20} /></button>
+              <button onClick={onDelete} className="action-icon-btn btn-danger" title="حذف"><Trash2 size={20} /></button>
             </>
           )}
         </div>
