@@ -27,6 +27,16 @@ const Form = () => {
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const searchVal = params.get('phone');
+    if (searchVal) {
+      const isNumber = /^\d+$/.test(searchVal);
+      setFormData(prev => ({ 
+        ...prev, 
+        [isNumber ? 'phone' : 'name']: searchVal 
+      }));
+    }
+
     checkOfflineQueue();
 
     const handleOnline = () => {

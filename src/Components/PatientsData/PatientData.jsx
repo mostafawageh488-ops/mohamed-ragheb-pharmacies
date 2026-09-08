@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabaseClient';
 import { 
   Search, Trash2, FileText, ListTodo, Filter, RotateCcw, XCircle, 
@@ -338,7 +339,7 @@ const PatientData = () => {
               <h3 className="empty-title">جارٍ تحميل السجلات...</h3>
             </div>
           ) : visiblePatients.length === 0 ? (
-            <EmptyState hasSearch={Boolean(searchTerm.trim())} showOnlyMissing={showOnlyMissing} showRecycleBin={showRecycleBin} />
+            <EmptyState hasSearch={Boolean(searchTerm.trim())} showOnlyMissing={showOnlyMissing} showRecycleBin={showRecycleBin} searchTerm={searchTerm.trim()} />
           ) : (
             visiblePatients.map(patient => (
               <PatientCard
@@ -366,8 +367,8 @@ const PatientData = () => {
       )}
 
       {isExportModalVisible && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ textAlign: 'center' }}>
+        <div className="modal-overlay" onClick={() => setIsExportModalVisible(false)}>
+          <div className="modal-content" style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ marginBottom: '15px' }}><Lock size={36} color="#DC2626" /></div>
             <h3 className="modal-title">صلاحية التصدير (PDF)</h3>
             <p style={{ color: '#64748B', marginBottom: '20px' }}>يرجى إدخال رمز المرور السري المكون من 4 أرقام لتأكيد عملية التصدير.</p>
@@ -504,11 +505,17 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
   const [formData, setFormData] = useState({
     name: patient.name || '',
     phone: patient.phone || '',
+    phone2: patient.phone2 || '',
     deposit: patient.deposit !== null ? String(patient.deposit) : '',
     address: patient.address || '',
     branch: patient.branch || 'فرع ١ : حوش عيسى - خلف المستشفى العام',
-    need: patient.need || ''
+    need: patient.need || '',
+    reminder_days: patient.reminder_days || ''
   });
+  const [chronicMeds, setChronicMeds] = useState(patient.chronic_meds || []);
+  const [currentMedName, setCurrentMedName] = useState("");
+  const [currentMedType, setCurrentMedType] = useState("علبة");
+
   const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (e) => {
@@ -530,10 +537,13 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
     const updateData = {
       name: formData.name.trim(),
       phone: formData.phone.trim(),
+      phone2: formData.phone2 ? formData.phone2.trim() : null,
       deposit: finalCost,
       address: formData.address.trim(),
       branch: formData.branch,
       need: formData.need.trim(),
+      reminder_days: formData.reminder_days ? parseInt(formData.reminder_days, 10) : null,
+      chronic_meds: chronicMeds.length > 0 ? chronicMeds : null,
       message_sent_at: (formData.need.trim() !== patient.need) ? null : patient.message_sent_at
     };
 
@@ -552,22 +562,26 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <h3 className="modal-title">تعديل بيانات السجل</h3>
         {errorMsg && (
           <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '12px', fontWeight: 'bold' }}>
             {errorMsg}
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '65vh', overflowY: 'auto', paddingRight: '5px' }}>
           <div>
             <label className="form-label" style={{ marginBottom: '5px' }}>اسم العميل</label>
             <input name="name" className="form-input" value={formData.name} onChange={handleChange} />
           </div>
           <div>
-            <label className="form-label" style={{ marginBottom: '5px' }}>رقم الموبايل</label>
+            <label className="form-label" style={{ marginBottom: '5px' }}>رقم الموبايل 1</label>
             <input name="phone" className="form-input" value={formData.phone} onChange={handleChange} />
+          </div>
+          <div>
+            <label className="form-label" style={{ marginBottom: '5px' }}>رقم الموبايل 2</label>
+            <input name="phone2" className="form-input" value={formData.phone2} onChange={handleChange} />
           </div>
           <div>
             <label className="form-label" style={{ marginBottom: '5px' }}>التكلفة</label>
@@ -587,8 +601,56 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
             <label className="form-label" style={{ marginBottom: '5px' }}>نواقص الأدوية</label>
             <textarea name="need" className="form-input" value={formData.need} onChange={handleChange} style={{ resize: 'vertical', minHeight: '80px' }}></textarea>
           </div>
+          
+          <div className="chronic-meds-section" style={{ border: '1px solid #cbd5e1', padding: '15px', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#0369a1', fontSize: '1rem' }}>أدوية الأمراض المزمنة</h4>
+            <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="اسم الدواء..." 
+                value={currentMedName} 
+                onChange={(e) => setCurrentMedName(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <select 
+                className="form-input" 
+                value={currentMedType} 
+                onChange={(e) => setCurrentMedType(e.target.value)}
+                style={{ width: '80px', padding: '0 5px' }}
+              >
+                <option value="علبة">علبة</option>
+                <option value="شريط">شريط</option>
+              </select>
+              <button 
+                type="button" 
+                className="btn btn-save" 
+                style={{ width: 'auto', padding: '0 15px' }}
+                onClick={() => {
+                  if(currentMedName.trim()) {
+                    setChronicMeds([...chronicMeds, { name: currentMedName.trim(), type: currentMedType }]);
+                    setCurrentMedName('');
+                  }
+                }}
+              >إضافة</button>
+            </div>
+            {chronicMeds.length > 0 && (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                {chronicMeds.map((med, idx) => (
+                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '5px', border: '1px solid #e2e8f0' }}>
+                    <span>{med.name} - <strong style={{ color: '#0284c7' }}>{med.type}</strong></span>
+                    <button type="button" onClick={() => setChronicMeds(chronicMeds.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '20px', lineHeight: '1' }}>×</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div style={{ marginTop: '15px' }}>
+              <label className="form-label" style={{ marginBottom: '5px' }}>عداد التنبيه (بالأيام)</label>
+              <input name="reminder_days" type="number" className="form-input" value={formData.reminder_days} onChange={handleChange} />
+            </div>
+          </div>
         </div>
-        <div className="modal-actions">
+        <div className="modal-actions" style={{ marginTop: '20px' }}>
           <button onClick={handleSave} disabled={isSaving} className="btn btn-save" style={{ flex: 1 }}>حفظ التعديلات</button>
           <button onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>إلغاء</button>
         </div>
@@ -599,8 +661,8 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
 
 function OrdersModal({ patients, onClose, onMarkReceived, onMedicationMessage }) {
   return (
-    <div className="modal-overlay">
-      <div className="modal-content" style={{ maxWidth: '600px', backgroundColor: '#F8FAFC' }}>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" style={{ maxWidth: '600px', backgroundColor: '#F8FAFC' }} onClick={(e) => e.stopPropagation()}>
         <div className="orders-header">
           <div className="orders-icon-shell"><ListTodo size={32} /></div>
           <div>
@@ -640,18 +702,29 @@ function OrdersModal({ patients, onClose, onMarkReceived, onMedicationMessage })
   );
 }
 
-function EmptyState({ hasSearch, showOnlyMissing, showRecycleBin }) {
+function EmptyState({ hasSearch, showOnlyMissing, showRecycleBin, searchTerm }) {
+  const navigate = useNavigate();
   const icon = showRecycleBin ? <Trash2 size={35} /> : (showOnlyMissing ? <CheckSquare size={35} /> : (hasSearch ? <Search size={35} /> : <Users size={35} />));
   const title = showRecycleBin ? "سلة المهملات فارغة" : (showOnlyMissing ? "لا توجد نواقص حالياً!" : (hasSearch ? "لا توجد نتائج مطابقة" : "لا توجد سجلات بعد"));
   const desc = showRecycleBin ? "السجلات المحذوفة تظهر هنا لمدة 7 أيام قبل الحذف النهائي." : (showOnlyMissing ? "عاش! مفيش أي مريض مستني أدوية." : "سيظهر العملاء الذين تسجلهم هنا فوراً.");
 
   return (
-    <div className="empty-state">
+    <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div className={`empty-icon ${showRecycleBin ? 'deleted' : ''}`} style={{ backgroundColor: showRecycleBin ? '#FEE2E2' : '#FFF7ED', color: showRecycleBin ? '#EF4444' : '#EA580C' }}>
         {icon}
       </div>
       <h3 className="empty-title">{title}</h3>
       <p className="empty-description">{desc}</p>
+      {hasSearch && searchTerm && (
+        <button 
+          onClick={() => navigate(`/?phone=${encodeURIComponent(searchTerm)}`)}
+          className="btn btn-save"
+          style={{ marginTop: '15px', maxWidth: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          <Users size={18} />
+          إضافة "{searchTerm}" كعميل جديد
+        </button>
+      )}
     </div>
   );
 }
