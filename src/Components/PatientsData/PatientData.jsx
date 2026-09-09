@@ -24,6 +24,7 @@ const PatientData = () => {
   const [pinError, setPinError] = useState("");
   
   const [isOrdersModalVisible, setIsOrdersModalVisible] = useState(false);
+  const [receivingPatient, setReceivingPatient] = useState(null);
 
   useEffect(() => {
     fetchPatients();
@@ -137,9 +138,7 @@ const PatientData = () => {
   };
 
   const handleMarkMedsReceived = (patient) => {
-    if (window.confirm(`هل تم توفير الأدوية للمريض ${patient.name} وتسليمها؟`)) {
-      updatePatient(patient.id, { need: "", message_sent_at: null });
-    }
+    setReceivingPatient(patient);
   };
 
   const handleAvailabilityMessage = (patient) => {
@@ -398,6 +397,14 @@ const PatientData = () => {
           onMedicationMessage={handleAvailabilityMessage}
         />
       )}
+
+      {receivingPatient && (
+        <ReceiveMedicationModal
+          patient={receivingPatient}
+          onClose={() => setReceivingPatient(null)}
+          updatePatient={updatePatient}
+        />
+      )}
     </>
   );
 };
@@ -652,6 +659,85 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
         </div>
         <div className="modal-actions" style={{ marginTop: '20px' }}>
           <button onClick={handleSave} disabled={isSaving} className="btn btn-save" style={{ flex: 1 }}>حفظ التعديلات</button>
+          <button onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>إلغاء</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReceiveMedicationModal({ patient, onClose, updatePatient }) {
+  const [reminderDays, setReminderDays] = useState("30");
+  const [enableReminder, setEnableReminder] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleConfirm = async () => {
+    setIsSaving(true);
+    const updateData = { need: "", message_sent_at: null };
+    
+    if (enableReminder && reminderDays) {
+      const parsedDays = parseInt(reminderDays, 10);
+      if (!isNaN(parsedDays) && parsedDays > 0) {
+        updateData.reminder_days = parsedDays;
+        updateData.created_at = new Date().toISOString(); 
+        
+        const existingMeds = patient.chronic_meds || [];
+        const medNames = (patient.need || "").split(/[،,و-]/).map(m => m.trim()).filter(m => m);
+        const newMeds = medNames.map(name => ({ name, type: 'علبة' }));
+        const mergedMeds = [...existingMeds];
+        newMeds.forEach(newMed => {
+          if (!mergedMeds.find(m => m.name === newMed.name)) {
+            mergedMeds.push(newMed);
+          }
+        });
+        updateData.chronic_meds = mergedMeds;
+      }
+    }
+    
+    await updatePatient(patient.id, updateData);
+    setIsSaving(false);
+    onClose();
+  };
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 1000 }} onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+          <CheckCircle size={45} color="#10B981" />
+        </div>
+        <h3 className="modal-title" style={{ textAlign: 'center' }}>تأكيد تسليم النواقص</h3>
+        <p style={{ textAlign: 'center', marginBottom: '20px', color: '#475569', fontSize: '1.1rem' }}>
+          هل تم توفير الأدوية <strong style={{ color: '#0284c7' }}>({patient.need})</strong> للعميل <strong>{patient.name}</strong> وتسليمها؟
+        </p>
+        
+        <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '15px', marginBottom: '20px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', color: '#166534', marginBottom: '10px' }}>
+            <input 
+              type="checkbox" 
+              checked={enableReminder} 
+              onChange={(e) => setEnableReminder(e.target.checked)} 
+              style={{ transform: 'scale(1.2)' }}
+            />
+            ضبط تذكير تلقائي لصرف العلاج القادم
+          </label>
+          
+          {enableReminder && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', marginRight: '25px' }}>
+              <span style={{ color: '#15803D' }}>تذكير بعد:</span>
+              <input 
+                type="number" 
+                className="form-input" 
+                value={reminderDays} 
+                onChange={(e) => setReminderDays(e.target.value)} 
+                style={{ width: '80px', padding: '8px', textAlign: 'center', borderColor: '#BBF7D0' }} 
+              />
+              <span style={{ color: '#15803D' }}>يوم</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="modal-actions">
+          <button onClick={handleConfirm} disabled={isSaving} className="btn btn-save" style={{ flex: 1, backgroundColor: '#10B981' }}>تأكيد التسليم</button>
           <button onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>إلغاء</button>
         </div>
       </div>

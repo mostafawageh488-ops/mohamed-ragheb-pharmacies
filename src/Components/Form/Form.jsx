@@ -19,6 +19,7 @@ const Form = () => {
   const [currentMedType, setCurrentMedType] = useState('علبة');
 
   const [formData, setFormData] = useState(INITIAL_FORM);
+  const [title, setTitle] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -135,7 +136,8 @@ const Form = () => {
         
         setStatus({ type: 'error', message: "⚠️ أنت أوفلاين: تم الحفظ مؤقتاً وسيتم الرفع عند عودة الإنترنت." });
         if (withWhatsApp) {
-          const message = encodeURIComponent(`أهلاً بحضرتك ${patientDataToSave.name}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
+          const nameWithTitle = title ? `${title} ${patientDataToSave.name}` : patientDataToSave.name;
+          const message = encodeURIComponent(`أهلاً بحضرتك ${nameWithTitle}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
 ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
 لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
 📞 0109109838`);
@@ -161,12 +163,14 @@ const Form = () => {
       setIsSubmitting(false);
       setFormData(INITIAL_FORM);
       setChronicMeds([]);
+      setTitle('');
       setStatus({ type: 'success', message: 'تم حفظ بيانات العميل بنجاح!' });
       
       if (withWhatsApp && patientDataToSave.phone) {
         let formattedPhone = patientDataToSave.phone;
         if (formattedPhone.startsWith('0')) formattedPhone = '2' + formattedPhone;
-        const message = encodeURIComponent(`أهلاً بحضرتك ${patientDataToSave.name}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
+        const nameWithTitle = title ? `${title} ${patientDataToSave.name}` : patientDataToSave.name;
+        const message = encodeURIComponent(`أهلاً بحضرتك ${nameWithTitle}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
 ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
 لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
 📞 0109109838`);
@@ -219,7 +223,21 @@ const Form = () => {
             <label className="form-label" htmlFor="name">
               اسم العميل <span className="req">*</span> <User size={14} className="label-icon" />
             </label>
-            <input type="text" id="name" name="name" className="form-input" placeholder="مثال: أحمد محمد" value={formData.name} onChange={handleChange} />
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <select 
+                className="form-input" 
+                style={{ width: '120px' }} 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)}
+              >
+                <option value="">بدون لقب</option>
+                <option value="أ.">أ. (أستاذ/ة)</option>
+                <option value="د.">د. (دكتور/ة)</option>
+                <option value="م.">م. (مهندس/ة)</option>
+                <option value="حاج/ة ">حاج / حاجة</option>
+              </select>
+              <input type="text" id="name" name="name" className="form-input" placeholder="مثال: أحمد محمد" value={formData.name} onChange={handleChange} style={{ flex: 1 }} />
+            </div>
           </div>
 
           <div className="form-group">
