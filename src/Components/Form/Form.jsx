@@ -7,44 +7,28 @@ const Form = () => {
   const INITIAL_FORM = {
     name: '',
     phone: '',
-    phone2: '',
     deposit: '',
     address: '',
     need: '',
-    branch: 'فرع ١ : حوش عيسى - خلف المستشفى العام',
-    reminder_days: '',
+    branch: 'فرع ١ : حوش عيسى - خلف المستشفى العام'
   };
-  const [chronicMeds, setChronicMeds] = useState([]);
-  const [currentMedName, setCurrentMedName] = useState('');
-  const [currentMedType, setCurrentMedType] = useState('علبة');
 
   const [formData, setFormData] = useState(INITIAL_FORM);
-  const [title, setTitle] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Offline states
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [offlineQueueCount, setOfflineQueueCount] = useState(0);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const searchVal = params.get('phone');
-    if (searchVal) {
-      const isNumber = /^\d+$/.test(searchVal);
-      setFormData(prev => ({ 
-        ...prev, 
-        [isNumber ? 'phone' : 'name']: searchVal 
-      }));
-    }
-
     checkOfflineQueue();
 
     const handleOnline = () => {
       setIsOffline(false);
       syncOfflineData();
     };
-    
+
     const handleOffline = () => {
       setIsOffline(true);
     };
@@ -74,7 +58,7 @@ const Form = () => {
         const patientsToSync = JSON.parse(stored);
         if (patientsToSync.length > 0) {
           setStatus({ type: 'success', message: `🔄 جاري مزامنة ${patientsToSync.length} سجلات محفوظة أوفلاين...` });
-          
+
           let successCount = 0;
           let duplicateCount = 0;
           for (const p of patientsToSync) {
@@ -89,7 +73,7 @@ const Form = () => {
               successCount++;
             }
           }
-          
+
           localStorage.removeItem('offlinePatientsQueue');
           setOfflineQueueCount(0);
           setStatus({ type: 'success', message: `✅ تمت المزامنة! تم رفع ${successCount} سجلات بنجاح.` + (duplicateCount > 0 ? ` (تم تجاهل ${duplicateCount} أرقام مكررة)` : '') });
@@ -106,22 +90,29 @@ const Form = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleKeyDown = (e, nextFieldId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const nextField = document.getElementById(nextFieldId);
+      if (nextField) {
+        nextField.focus();
+      }
+    }
+  };
+
   const handleSave = async (withWhatsApp) => {
     if (!formData.name || !formData.phone) {
-      setStatus({ type: 'error', message: 'يرجى إدخال اسم العميل ورقم الهاتف أولاً.' });
+      setStatus({ type: 'error', message: 'يرجى إدخال اسم المريض ورقم الهاتف أولاً.' });
       return;
     }
 
     const patientDataToSave = {
       name: formData.name.trim(),
       phone: formData.phone.trim(),
-      phone2: formData.phone2 ? formData.phone2.trim() : null,
       deposit: formData.deposit.trim() ? parseFloat(formData.deposit) : null,
       address: formData.address.trim(),
       need: formData.need.trim(),
-      branch: formData.branch,
-      chronic_meds: chronicMeds.length > 0 ? chronicMeds : null,
-      reminder_days: formData.reminder_days ? parseInt(formData.reminder_days, 10) : null
+      branch: formData.branch
     };
 
     if (isOffline) {
@@ -130,17 +121,13 @@ const Form = () => {
         const queue = stored ? JSON.parse(stored) : [];
         queue.push(patientDataToSave);
         localStorage.setItem('offlinePatientsQueue', JSON.stringify(queue));
-        
+
         setOfflineQueueCount(queue.length);
         setFormData(INITIAL_FORM);
-        
+
         setStatus({ type: 'error', message: "⚠️ أنت أوفلاين: تم الحفظ مؤقتاً وسيتم الرفع عند عودة الإنترنت." });
         if (withWhatsApp) {
-          const nameWithTitle = title ? `${title} ${patientDataToSave.name}` : patientDataToSave.name;
-          const message = encodeURIComponent(`أهلاً بحضرتك ${nameWithTitle}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
-ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
-لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
-📞 0109109838`);
+          const message = encodeURIComponent(`مرحباً بك في صيدليات محمد راغب، ${patientDataToSave.name}! نحن سعداء بخدمتك.`);
           let formattedPhone = patientDataToSave.phone;
           if (formattedPhone.startsWith('0')) formattedPhone = '2' + formattedPhone;
           window.open(`https://wa.me/${formattedPhone}?text=${message}`, '_blank');
@@ -162,18 +149,12 @@ const Form = () => {
 
       setIsSubmitting(false);
       setFormData(INITIAL_FORM);
-      setChronicMeds([]);
-      setTitle('');
-      setStatus({ type: 'success', message: 'تم حفظ بيانات العميل بنجاح!' });
-      
+      setStatus({ type: 'success', message: 'تم حفظ بيانات المريض بنجاح!' });
+
       if (withWhatsApp && patientDataToSave.phone) {
         let formattedPhone = patientDataToSave.phone;
         if (formattedPhone.startsWith('0')) formattedPhone = '2' + formattedPhone;
-        const nameWithTitle = title ? `${title} ${patientDataToSave.name}` : patientDataToSave.name;
-        const message = encodeURIComponent(`أهلاً بحضرتك ${nameWithTitle}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
-ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
-لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
-📞 0109109838`);
+        const message = encodeURIComponent(`مرحباً بك في صيدليات محمد راغب، ${patientDataToSave.name}! نحن سعداء بخدمتك.`);
         const waUrl = `https://wa.me/${formattedPhone}?text=${message}`;
         window.open(waUrl, '_blank');
       }
@@ -199,11 +180,11 @@ const Form = () => {
               <img src="/logo.png" alt="Mohammed Ragheb Pharmacies Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div className="form-brand-text">
-              <h1 className="form-main-title">بيانات العميل</h1>
-              <h2 className="form-sub-title">صيدليات دكتور محمد راغب قريطم</h2>
+              <h1 className="form-main-title">بيانات المريض</h1>
+              <h2 className="form-sub-title">صيدليات محمد راغب</h2>
             </div>
           </div>
-          
+
           {isOffline && (
             <div className="offline-badge">
               <WifiOff size={24} /> أوفلاين ({offlineQueueCount})
@@ -221,58 +202,37 @@ const Form = () => {
         <div className="form-content">
           <div className="form-group">
             <label className="form-label" htmlFor="name">
-              اسم العميل <span className="req">*</span> <User size={14} className="label-icon" />
+              اسم المريض <span className="req">*</span> <User size={14} className="label-icon" />
             </label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <select 
-                className="form-input" 
-                style={{ width: '120px' }} 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)}
-              >
-                <option value="">بدون لقب</option>
-                <option value="أ.">أ. (أستاذ/ة)</option>
-                <option value="د.">د. (دكتور/ة)</option>
-                <option value="م.">م. (مهندس/ة)</option>
-                <option value="حاج/ة ">حاج / حاجة</option>
-              </select>
-              <input type="text" id="name" name="name" className="form-input" placeholder="مثال: أحمد محمد" value={formData.name} onChange={handleChange} style={{ flex: 1 }} />
-            </div>
+            <input type="text" id="name" name="name" className="form-input" placeholder="مثال: أحمد محمد" value={formData.name} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'phone')} />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="phone">
-              رقم الموبايل 1 <span className="req">*</span> <Phone size={14} className="label-icon" />
+              رقم الموبايل <span className="req">*</span> <Phone size={14} className="label-icon" />
             </label>
-            <input type="tel" id="phone" name="phone" className="form-input" placeholder="01009109838" value={formData.phone} onChange={handleChange} />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="phone2">
-              رقم الموبايل 2 <span>(اختياري)</span> <Phone size={14} className="label-icon" />
-            </label>
-            <input type="tel" id="phone2" name="phone2" className="form-input" placeholder="01xxxxxxxxx" value={formData.phone2} onChange={handleChange} />
+            <input type="tel" id="phone" name="phone" className="form-input" placeholder="01009109838" value={formData.phone} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'deposit')} />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="deposit">
               قيمة الحساب <DollarSign size={14} className="label-icon" />
             </label>
-            <input type="number" id="deposit" name="deposit" className="form-input" placeholder="0" value={formData.deposit} onChange={handleChange} />
+            <input type="number" id="deposit" name="deposit" className="form-input" placeholder="0" value={formData.deposit} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'address')} />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="address">
               العنوان التفصيلي <MapPin size={14} className="label-icon" />
             </label>
-            <input type="text" id="address" name="address" className="form-input" placeholder="الشارع، المنطقة، علامة مميزة" value={formData.address} onChange={handleChange} />
+            <input type="text" id="address" name="address" className="form-input" placeholder="الشارع، المنطقة، علامة مميزة" value={formData.address} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'branch')} />
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="branch">
               الفرع <Building size={14} className="label-icon" />
             </label>
-            <select id="branch" name="branch" className="form-input" value={formData.branch} onChange={handleChange}>
+            <select id="branch" name="branch" className="form-input" value={formData.branch} onChange={handleChange} onKeyDown={(e) => handleKeyDown(e, 'need')}>
               <option value="فرع ١ : حوش عيسى - خلف المستشفى العام">فرع ١ : حوش عيسى - خلف المستشفى العام</option>
             </select>
           </div>
@@ -281,70 +241,7 @@ const Form = () => {
             <label className="form-label" htmlFor="need">
               نواقص أدوية <span>(اختياري)</span> <Pill size={14} className="label-icon" />
             </label>
-            <input type="text" id="need" name="need" className="form-input" placeholder="مثال: فيتامين د، بخاخ حساسية" value={formData.need} onChange={handleChange} />
-          </div>
-
-          {/* Chronic Meds Section */}
-          <div className="chronic-meds-section">
-            <h3 className="section-title">أدوية الأمراض المزمنة <span>(اختياري)</span></h3>
-            
-            <div className="meds-input-row">
-              <input 
-                type="text" 
-                className="form-input med-name-input" 
-                placeholder="اسم الدواء..." 
-                value={currentMedName} 
-                onChange={(e) => setCurrentMedName(e.target.value)} 
-              />
-              <select 
-                className="form-input med-type-select" 
-                value={currentMedType} 
-                onChange={(e) => setCurrentMedType(e.target.value)}
-              >
-                <option value="علبة">علبة</option>
-                <option value="شريط">شريط</option>
-              </select>
-              <button 
-                type="button" 
-                className="btn btn-add-med" 
-                onClick={() => {
-                  if(currentMedName.trim()) {
-                    setChronicMeds([...chronicMeds, { name: currentMedName.trim(), type: currentMedType }]);
-                    setCurrentMedName('');
-                  }
-                }}
-              >
-                إضافة
-              </button>
-            </div>
-            
-            {chronicMeds.length > 0 && (
-              <ul className="meds-list">
-                {chronicMeds.map((med, idx) => (
-                  <li key={idx} className="med-item">
-                    <span>{med.name} - <strong>{med.type}</strong></span>
-                    <button type="button" className="btn-remove-med" onClick={() => {
-                      setChronicMeds(chronicMeds.filter((_, i) => i !== idx));
-                    }}>×</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="form-label" htmlFor="reminder_days">
-                عداد التنبيه (بالأيام) <span>لتذكير العميل بصرف علاجه</span>
-              </label>
-              <input 
-                type="number" 
-                id="reminder_days" 
-                name="reminder_days" 
-                className="form-input" 
-                placeholder="مثال: 30 (شهر) أو 7 (أسبوع)" 
-                value={formData.reminder_days} 
-                onChange={handleChange} 
-              />
-            </div>
+            <input type="text" id="need" name="need" className="form-input" placeholder="مثال: فيتامين د، بخاخ حساسية" value={formData.need} onChange={handleChange} onKeyDown={(e) => { if (e.key === 'Enter') handleSave(false); }} />
           </div>
 
           <div className="buttons-container">
@@ -357,9 +254,9 @@ const Form = () => {
               تسجيل ورسالة
             </button>
           </div>
-          
+
           <p className="footer-note">سيتم فتح واتساب برسالة جاهزة بعد حفظ السجل إذا اخترت (رسالة).</p>
-          
+
           <div className="designer-badge">
             Designed By: Dr.Mostafa Wageh Sarhan
           </div>

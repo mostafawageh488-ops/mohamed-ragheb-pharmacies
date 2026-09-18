@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabaseClient';
-import { 
-  Search, Trash2, FileText, ListTodo, Filter, RotateCcw, XCircle, 
-  Edit2, Phone as PhoneIcon, Building, MapPin, DollarSign, Clock, 
+import {
+  Search, Trash2, FileText, ListTodo, Filter, RotateCcw, XCircle,
+  Edit2, Phone as PhoneIcon, Building, MapPin, DollarSign, Clock,
   AlertTriangle, CheckCircle, MessageCircle, Lock, Users, CheckSquare
 } from 'lucide-react';
 import './PatientData.css';
@@ -15,16 +14,16 @@ const PatientData = () => {
   const [error, setError] = useState("");
 
   const [editingPatient, setEditingPatient] = useState(null);
-  
-  const [showOnlyMissing, setShowOnlyMissing] = useState(false); 
+
+  const [showOnlyMissing, setShowOnlyMissing] = useState(false);
+  const [showLatePickups, setShowLatePickups] = useState(false);
   const [showRecycleBin, setShowRecycleBin] = useState(false);
 
   const [isExportModalVisible, setIsExportModalVisible] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
-  
+
   const [isOrdersModalVisible, setIsOrdersModalVisible] = useState(false);
-  const [receivingPatient, setReceivingPatient] = useState(null);
 
   useEffect(() => {
     fetchPatients();
@@ -51,11 +50,11 @@ const PatientData = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+
       // Auto-cleanup Recycle Bin (> 7 days)
       const now = Date.now();
       const recordsToKeep = [];
-      
+
       for (const p of data) {
         if (p.is_deleted && p.deleted_at) {
           const daysPassed = (now - p.deleted_at) / (1000 * 60 * 60 * 24);
@@ -88,7 +87,15 @@ const PatientData = () => {
     if (showOnlyMissing && !showRecycleBin) {
       filtered = filtered.filter((p) => p.need && p.need.trim() !== "");
     }
-    
+
+    if (showLatePickups && !showRecycleBin) {
+      filtered = filtered.filter((p) => {
+        if (!p.message_sent_at || !p.need || p.need.trim() === "") return false;
+        const hoursPassed = (Date.now() - p.message_sent_at) / (1000 * 60 * 60);
+        return hoursPassed >= 48;
+      });
+    }
+
     const query = searchTerm.trim().toLowerCase();
     if (query) {
       filtered = filtered.filter((patient) => {
@@ -138,34 +145,25 @@ const PatientData = () => {
   };
 
   const handleMarkMedsReceived = (patient) => {
-    setReceivingPatient(patient);
+    if (window.confirm(`هل تم توفير الأدوية للمريض ${patient.name} وتسليمها؟`)) {
+      updatePatient(patient.id, { need: "", message_sent_at: null });
+    }
   };
 
   const handleAvailabilityMessage = (patient) => {
     updatePatient(patient.id, { message_sent_at: Date.now() });
-    const message = `أهلاً بحضرتك ${patient.name}.. اهتماماً منا بتوفير كل ما يخص صحتك فور إتاحته، نبشرك بأن ${patient.need} متوفر الآن في صيدليات د. محمد راغب قريطم (خلف المستشفى العام).
-بانتظار زيارتك، مع أمنياتنا القلبية لك بالشفاء والعافية.`;
+    const message = `مرحباً بك في صيدليات محمد راغب، ${patient.name}! الأدوية الخاصة بك (${patient.need}) متوفرة الآن ويمكنك استلامها.`;
     let phone = patient.phone.replace(/\s/g, "");
     if (phone.startsWith('0')) phone = '2' + phone;
     const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
-  const handleSendWelcome = (patient) => {
-    let phone = patient.phone.replace(/\s/g, "");
-    if (phone.startsWith('0')) phone = '2' + phone;
-    const message = encodeURIComponent(`أهلاً بحضرتك ${patient.name}، سعداء بخدمتك في صيدليات دكتور محمد راغب قريطم.
-ثقتك بنا شرف نعتز به، ونتعهد بأن نظل دائماً عند حُسن ظنك لنقدم لك الرعاية التي تستحقها. أمنياتنا الخالصة لك بصحة لا تفارقك.
-لأي استفسار أو لخدمة التوصيل السريع، نحن في انتظار تواصلك:
-📞 0109109838`);
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-  };
-
   const handleVerifyPin = () => {
     if (pin === "1996") {
       setIsExportModalVisible(false);
       setPin("");
-      exportToPDF(); 
+      exportToPDF();
     } else {
       setPinError("رمز المرور غير صحيح!");
     }
@@ -197,7 +195,7 @@ const PatientData = () => {
     const html = `
       <html dir="rtl" lang="ar">
         <head>
-          <title>تقرير سجلات العملاء - صيدليات دكتور محمد راغب قريطم</title>
+          <title>تقرير سجلات المرضى - صيدليات محمد راغب</title>
           <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
           <style>
             body { font-family: 'Cairo', sans-serif; background-color: #FFFFFF; margin: 0; padding: 40px; color: #0F172A; }
@@ -223,14 +221,14 @@ const PatientData = () => {
         <body>
           <div class="header">
             <div class="logo-placeholder">💊</div>
-            <h1>صيدليات دكتور محمد راغب قريطم</h1>
+            <h1>صيدليات محمد راغب</h1>
             <p>تقرير نظام إدارة السجلات الطبية (PDF)</p>
             <div class="date">تاريخ التقرير: ${new Intl.DateTimeFormat("ar-EG", { dateStyle: 'full' }).format(new Date())}</div>
           </div>
           <table>
             <thead>
               <tr>
-                <th>اسم العميل</th>
+                <th>اسم المريض</th>
                 <th>الموبايل</th>
                 <th>الحساب</th>
                 <th>العنوان</th>
@@ -242,7 +240,7 @@ const PatientData = () => {
             <tbody>${rowsHtml}</tbody>
           </table>
           <div class="footer">
-            تم إنشاء هذا التقرير تلقائياً بواسطة نظام إدارة صيدليات دكتور محمد راغب قريطم<br/>
+            تم إنشاء هذا التقرير تلقائياً بواسطة نظام إدارة صيدليات محمد راغب<br/>
             <b>Designed By Dr. Mostafa Wageh Sarhan</b>
           </div>
           <script>
@@ -262,16 +260,16 @@ const PatientData = () => {
     <>
       <div className={`records-bg ${showRecycleBin ? 'recycle' : ''}`}></div>
       <div className="records-container animate-fade-in">
-        
+
         <div className={`brand-hero ${showRecycleBin ? 'recycle-hero' : ''}`}>
           <div className="brand-logo-shell" style={{ overflow: 'hidden' }}>
             <img src="/logo.png" alt="Mohammed Ragheb Pharmacies Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <div className="brand-copy">
             <h1 className={`brand-arabic-title ${showRecycleBin ? 'recycle-title' : ''}`}>
-              {showRecycleBin ? "سلة المهملات" : "سجل العملاء"}
+              {showRecycleBin ? "سلة المهملات" : "سجل المرضى"}
             </h1>
-            <h2 className="brand-english-title">صيدليات دكتور محمد راغب قريطم</h2>
+            <h2 className="brand-english-title">صيدليات محمد راغب</h2>
             <p className="brand-established">
               {showRecycleBin ? "الاحتفاظ بالسجلات المحذوفة لـ 7 أيام" : "نظام إدارة السجلات الطبية"}
             </p>
@@ -293,10 +291,25 @@ const PatientData = () => {
             {!showRecycleBin && (
               <>
                 <button
-                  onClick={() => setShowOnlyMissing(!showOnlyMissing)}
+                  onClick={() => {
+                    setShowOnlyMissing(!showOnlyMissing);
+                    setShowLatePickups(false);
+                  }}
                   className={`filter-btn ${showOnlyMissing ? 'filter-missing-btn-active' : 'filter-missing-btn'}`}
                 >
                   <Filter size={22} color={showOnlyMissing ? "#FFF" : "#EA580C"} />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowLatePickups(!showLatePickups);
+                    setShowOnlyMissing(false);
+                  }}
+                  className={`filter-btn`}
+                  style={{ backgroundColor: showLatePickups ? '#F59E0B' : '#FEF3C7' }}
+                  title="تأخر في الاستلام (> 48 ساعة)"
+                >
+                  <AlertTriangle size={22} color={showLatePickups ? "#FFF" : "#D97706"} />
                 </button>
 
                 <button
@@ -323,6 +336,7 @@ const PatientData = () => {
               onClick={() => {
                 setShowRecycleBin(!showRecycleBin);
                 setShowOnlyMissing(false);
+                setShowLatePickups(false);
               }}
               className={`filter-btn ${showRecycleBin ? 'recycle-btn-active' : 'recycle-btn'}`}
             >
@@ -338,7 +352,7 @@ const PatientData = () => {
               <h3 className="empty-title">جارٍ تحميل السجلات...</h3>
             </div>
           ) : visiblePatients.length === 0 ? (
-            <EmptyState hasSearch={Boolean(searchTerm.trim())} showOnlyMissing={showOnlyMissing} showRecycleBin={showRecycleBin} searchTerm={searchTerm.trim()} />
+            <EmptyState hasSearch={Boolean(searchTerm.trim())} showOnlyMissing={showOnlyMissing} showRecycleBin={showRecycleBin} />
           ) : (
             visiblePatients.map(patient => (
               <PatientCard
@@ -347,10 +361,9 @@ const PatientData = () => {
                 onDelete={() => confirmSoftDeletion(patient)}
                 onRestore={() => handleRestore(patient)}
                 onHardDelete={() => confirmHardDeletion(patient)}
-                onEdit={() => setEditingPatient(patient)} 
+                onEdit={() => setEditingPatient(patient)}
                 onMedicationMessage={() => handleAvailabilityMessage(patient)}
                 onMarkReceived={() => handleMarkMedsReceived(patient)}
-                onSendWelcome={() => handleSendWelcome(patient)}
               />
             ))
           )}
@@ -366,8 +379,8 @@ const PatientData = () => {
       )}
 
       {isExportModalVisible && (
-        <div className="modal-overlay" onClick={() => setIsExportModalVisible(false)}>
-          <div className="modal-content" style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ textAlign: 'center' }}>
             <div style={{ marginBottom: '15px' }}><Lock size={36} color="#DC2626" /></div>
             <h3 className="modal-title">صلاحية التصدير (PDF)</h3>
             <p style={{ color: '#64748B', marginBottom: '20px' }}>يرجى إدخال رمز المرور السري المكون من 4 أرقام لتأكيد عملية التصدير.</p>
@@ -380,7 +393,7 @@ const PatientData = () => {
               placeholder="* * * *"
             />
             {pinError && <p style={{ color: '#DC2626', marginTop: '10px' }}>{pinError}</p>}
-            
+
             <div className="modal-actions">
               <button onClick={handleVerifyPin} className="btn btn-save" style={{ flex: 1 }}>تأكيد</button>
               <button onClick={() => setIsExportModalVisible(false)} className="btn btn-outline" style={{ flex: 1 }}>إلغاء</button>
@@ -390,29 +403,21 @@ const PatientData = () => {
       )}
 
       {isOrdersModalVisible && (
-        <OrdersModal 
-          patients={missingMedsPatients} 
-          onClose={() => setIsOrdersModalVisible(false)} 
+        <OrdersModal
+          patients={missingMedsPatients}
+          onClose={() => setIsOrdersModalVisible(false)}
           onMarkReceived={handleMarkMedsReceived}
           onMedicationMessage={handleAvailabilityMessage}
-        />
-      )}
-
-      {receivingPatient && (
-        <ReceiveMedicationModal
-          patient={receivingPatient}
-          onClose={() => setReceivingPatient(null)}
-          updatePatient={updatePatient}
         />
       )}
     </>
   );
 };
 
-function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMedicationMessage, onMarkReceived, onSendWelcome }) {
+function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMedicationMessage, onMarkReceived }) {
   const hasMissingMedications = Boolean(patient.need?.trim());
   const isDeleted = patient.is_deleted;
-  
+
   const daysLeft = isDeleted && patient.deleted_at ? Math.max(0, 7 - Math.floor((Date.now() - patient.deleted_at) / (1000 * 60 * 60 * 24))) : 0;
 
   const timeDiff = patient.message_sent_at ? Date.now() - patient.message_sent_at : null;
@@ -423,13 +428,13 @@ function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMed
   let timeDisplay = "";
   if (hoursSinceMessage !== null && minutesSinceMessage !== null) {
     if (hoursSinceMessage >= 24) {
-      timeDisplay = `⚠️ تحذير: تم إبلاغ العميل منذ ${hoursSinceMessage} ساعة ولم يستلم!`;
+      timeDisplay = `⚠️ تحذير: تم إبلاغ المريض منذ ${hoursSinceMessage} ساعة ولم يستلم!`;
     } else if (hoursSinceMessage >= 1) {
-      timeDisplay = `⏳ تم إبلاغ العميل منذ ${hoursSinceMessage} ساعة`;
+      timeDisplay = `⏳ تم إبلاغ المريض منذ ${hoursSinceMessage} ساعة`;
     } else if (minutesSinceMessage > 0) {
-      timeDisplay = `⏳ تم إبلاغ العميل منذ ${minutesSinceMessage} دقيقة`;
+      timeDisplay = `⏳ تم إبلاغ المريض منذ ${minutesSinceMessage} دقيقة`;
     } else {
-      timeDisplay = `⏳ تم إبلاغ العميل الآن`;
+      timeDisplay = `⏳ تم إبلاغ المريض الآن`;
     }
   }
 
@@ -457,20 +462,19 @@ function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMed
             </>
           ) : (
             <>
-              <button onClick={onSendWelcome} className="action-icon-btn" style={{ backgroundColor: '#10B981', color: 'white' }} title="إرسال رسالة ترحيب"><MessageCircle size={20} /></button>
-              <a href={`tel:${(patient.phone || '').replace(/\s/g, '')}`} className="action-icon-btn btn-success" style={{ textDecoration: 'none' }} title="اتصال"><PhoneIcon size={20} /></a>
-              <button onClick={onEdit} className="action-icon-btn btn-info" title="تعديل"><Edit2 size={20} /></button>
-              <button onClick={onDelete} className="action-icon-btn btn-danger" title="حذف"><Trash2 size={20} /></button>
+              <a href={`tel:${(patient.phone || '').replace(/\s/g, '')}`} className="action-icon-btn btn-success" style={{ textDecoration: 'none' }}><PhoneIcon size={20} /></a>
+              <button onClick={onEdit} className="action-icon-btn btn-info"><Edit2 size={20} /></button>
+              <button onClick={onDelete} className="action-icon-btn btn-danger"><Trash2 size={20} /></button>
             </>
           )}
         </div>
       </div>
 
       <div className={`card-divider ${isDeleted ? 'deleted' : ''}`}></div>
-      
+
       <div className="metadata-row"><Building size={16} /> <span>{patient.branch}</span></div>
       {patient.address && <div className="metadata-row"><MapPin size={16} /> <span>{patient.address}</span></div>}
-      
+
       <div className="bottom-metadata-row">
         <div className="metadata-row"><DollarSign size={16} /> <span>{formatCost(patient.deposit)}</span></div>
         <div className="metadata-row"><Clock size={16} /> <span>{formatDate(patient.created_at)}</span></div>
@@ -494,7 +498,7 @@ function PatientCard({ patient, onDelete, onRestore, onHardDelete, onEdit, onMed
           <div className="medication-badge">
             <AlertTriangle size={16} /> نواقص أدوية: {patient.need}
           </div>
-          
+
           <div className="missing-action-row">
             <button onClick={onMarkReceived} className="resolve-btn"><CheckCircle size={24} /></button>
             <button onClick={onMedicationMessage} className="wa-msg-btn">
@@ -512,17 +516,11 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
   const [formData, setFormData] = useState({
     name: patient.name || '',
     phone: patient.phone || '',
-    phone2: patient.phone2 || '',
     deposit: patient.deposit !== null ? String(patient.deposit) : '',
     address: patient.address || '',
     branch: patient.branch || 'فرع ١ : حوش عيسى - خلف المستشفى العام',
-    need: patient.need || '',
-    reminder_days: patient.reminder_days || ''
+    need: patient.need || ''
   });
-  const [chronicMeds, setChronicMeds] = useState(patient.chronic_meds || []);
-  const [currentMedName, setCurrentMedName] = useState("");
-  const [currentMedType, setCurrentMedType] = useState("علبة");
-
   const [isSaving, setIsSaving] = useState(false);
 
   const handleChange = (e) => {
@@ -544,19 +542,16 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
     const updateData = {
       name: formData.name.trim(),
       phone: formData.phone.trim(),
-      phone2: formData.phone2 ? formData.phone2.trim() : null,
       deposit: finalCost,
       address: formData.address.trim(),
       branch: formData.branch,
       need: formData.need.trim(),
-      reminder_days: formData.reminder_days ? parseInt(formData.reminder_days, 10) : null,
-      chronic_meds: chronicMeds.length > 0 ? chronicMeds : null,
       message_sent_at: (formData.need.trim() !== patient.need) ? null : patient.message_sent_at
     };
 
     const result = await updatePatient(patient.id, updateData);
     setIsSaving(false);
-    
+
     if (result && result.error) {
       if (result.error.code === '23505') {
         setErrorMsg("رقم الموبايل مسجل مسبقاً لمريض آخر. لا يمكن تكراره!");
@@ -569,26 +564,22 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content">
         <h3 className="modal-title">تعديل بيانات السجل</h3>
         {errorMsg && (
           <div style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '12px', fontWeight: 'bold' }}>
             {errorMsg}
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '65vh', overflowY: 'auto', paddingRight: '5px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <div>
-            <label className="form-label" style={{ marginBottom: '5px' }}>اسم العميل</label>
+            <label className="form-label" style={{ marginBottom: '5px' }}>اسم المريض</label>
             <input name="name" className="form-input" value={formData.name} onChange={handleChange} />
           </div>
           <div>
-            <label className="form-label" style={{ marginBottom: '5px' }}>رقم الموبايل 1</label>
+            <label className="form-label" style={{ marginBottom: '5px' }}>رقم الموبايل</label>
             <input name="phone" className="form-input" value={formData.phone} onChange={handleChange} />
-          </div>
-          <div>
-            <label className="form-label" style={{ marginBottom: '5px' }}>رقم الموبايل 2</label>
-            <input name="phone2" className="form-input" value={formData.phone2} onChange={handleChange} />
           </div>
           <div>
             <label className="form-label" style={{ marginBottom: '5px' }}>التكلفة</label>
@@ -608,56 +599,8 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
             <label className="form-label" style={{ marginBottom: '5px' }}>نواقص الأدوية</label>
             <textarea name="need" className="form-input" value={formData.need} onChange={handleChange} style={{ resize: 'vertical', minHeight: '80px' }}></textarea>
           </div>
-          
-          <div className="chronic-meds-section" style={{ border: '1px solid #cbd5e1', padding: '15px', borderRadius: '8px', backgroundColor: '#f8fafc' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#0369a1', fontSize: '1rem' }}>أدوية الأمراض المزمنة</h4>
-            <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="اسم الدواء..." 
-                value={currentMedName} 
-                onChange={(e) => setCurrentMedName(e.target.value)}
-                style={{ flex: 1 }}
-              />
-              <select 
-                className="form-input" 
-                value={currentMedType} 
-                onChange={(e) => setCurrentMedType(e.target.value)}
-                style={{ width: '80px', padding: '0 5px' }}
-              >
-                <option value="علبة">علبة</option>
-                <option value="شريط">شريط</option>
-              </select>
-              <button 
-                type="button" 
-                className="btn btn-save" 
-                style={{ width: 'auto', padding: '0 15px' }}
-                onClick={() => {
-                  if(currentMedName.trim()) {
-                    setChronicMeds([...chronicMeds, { name: currentMedName.trim(), type: currentMedType }]);
-                    setCurrentMedName('');
-                  }
-                }}
-              >إضافة</button>
-            </div>
-            {chronicMeds.length > 0 && (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {chronicMeds.map((med, idx) => (
-                  <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '5px', border: '1px solid #e2e8f0' }}>
-                    <span>{med.name} - <strong style={{ color: '#0284c7' }}>{med.type}</strong></span>
-                    <button type="button" onClick={() => setChronicMeds(chronicMeds.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '20px', lineHeight: '1' }}>×</button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div style={{ marginTop: '15px' }}>
-              <label className="form-label" style={{ marginBottom: '5px' }}>عداد التنبيه (بالأيام)</label>
-              <input name="reminder_days" type="number" className="form-input" value={formData.reminder_days} onChange={handleChange} />
-            </div>
-          </div>
         </div>
-        <div className="modal-actions" style={{ marginTop: '20px' }}>
+        <div className="modal-actions">
           <button onClick={handleSave} disabled={isSaving} className="btn btn-save" style={{ flex: 1 }}>حفظ التعديلات</button>
           <button onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>إلغاء</button>
         </div>
@@ -666,105 +609,46 @@ function EditPatientModal({ patient, onClose, updatePatient }) {
   );
 }
 
-function ReceiveMedicationModal({ patient, onClose, updatePatient }) {
-  const [reminderDays, setReminderDays] = useState("30");
-  const [enableReminder, setEnableReminder] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleConfirm = async () => {
-    setIsSaving(true);
-    const updateData = { need: "", message_sent_at: null };
-    
-    if (enableReminder && reminderDays) {
-      const parsedDays = parseInt(reminderDays, 10);
-      if (!isNaN(parsedDays) && parsedDays > 0) {
-        updateData.reminder_days = parsedDays;
-        updateData.created_at = new Date().toISOString(); 
-        
-        const existingMeds = patient.chronic_meds || [];
-        const medNames = (patient.need || "").split(/[،,و-]/).map(m => m.trim()).filter(m => m);
-        const newMeds = medNames.map(name => ({ name, type: 'علبة' }));
-        const mergedMeds = [...existingMeds];
-        newMeds.forEach(newMed => {
-          if (!mergedMeds.find(m => m.name === newMed.name)) {
-            mergedMeds.push(newMed);
-          }
-        });
-        updateData.chronic_meds = mergedMeds;
-      }
-    }
-    
-    await updatePatient(patient.id, updateData);
-    setIsSaving(false);
-    onClose();
-  };
-
-  return (
-    <div className="modal-overlay" style={{ zIndex: 1000 }} onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-          <CheckCircle size={45} color="#10B981" />
-        </div>
-        <h3 className="modal-title" style={{ textAlign: 'center' }}>تأكيد تسليم النواقص</h3>
-        <p style={{ textAlign: 'center', marginBottom: '20px', color: '#475569', fontSize: '1.1rem' }}>
-          هل تم توفير الأدوية <strong style={{ color: '#0284c7' }}>({patient.need})</strong> للعميل <strong>{patient.name}</strong> وتسليمها؟
-        </p>
-        
-        <div style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '15px', marginBottom: '20px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 'bold', color: '#166534', marginBottom: '10px' }}>
-            <input 
-              type="checkbox" 
-              checked={enableReminder} 
-              onChange={(e) => setEnableReminder(e.target.checked)} 
-              style={{ transform: 'scale(1.2)' }}
-            />
-            ضبط تذكير تلقائي لصرف العلاج القادم
-          </label>
-          
-          {enableReminder && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', marginRight: '25px' }}>
-              <span style={{ color: '#15803D' }}>تذكير بعد:</span>
-              <input 
-                type="number" 
-                className="form-input" 
-                value={reminderDays} 
-                onChange={(e) => setReminderDays(e.target.value)} 
-                style={{ width: '80px', padding: '8px', textAlign: 'center', borderColor: '#BBF7D0' }} 
-              />
-              <span style={{ color: '#15803D' }}>يوم</span>
-            </div>
-          )}
-        </div>
-        
-        <div className="modal-actions">
-          <button onClick={handleConfirm} disabled={isSaving} className="btn btn-save" style={{ flex: 1, backgroundColor: '#10B981' }}>تأكيد التسليم</button>
-          <button onClick={onClose} className="btn btn-outline" style={{ flex: 1 }}>إلغاء</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function OrdersModal({ patients, onClose, onMarkReceived, onMedicationMessage }) {
+  const [orderSearchTerm, setOrderSearchTerm] = useState('');
+  
+  const filteredPatients = patients.filter(p => {
+    if (!orderSearchTerm.trim()) return true;
+    return (p.need || "").toLowerCase().includes(orderSearchTerm.toLowerCase()) || 
+           (p.name || "").toLowerCase().includes(orderSearchTerm.toLowerCase());
+  });
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '600px', backgroundColor: '#F8FAFC' }} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content" style={{ maxWidth: '600px', backgroundColor: '#F8FAFC' }}>
         <div className="orders-header">
           <div className="orders-icon-shell"><ListTodo size={32} /></div>
-          <div>
+          <div style={{ flex: 1 }}>
             <h3 className="orders-title">كشف الطلبيات المجمعة</h3>
             <p className="orders-subtitle">إجمالي الحالات المنتظرة: <span style={{ color: '#EA580C', fontWeight: 'bold' }}>{patients.length}</span></p>
           </div>
         </div>
 
-        <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          {patients.length === 0 ? (
+        <div style={{ marginBottom: '15px', position: 'relative' }}>
+          <Search size={18} color="#64748B" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input 
+            type="text" 
+            placeholder="ابحث عن دواء معين أو مريض..." 
+            className="form-input"
+            value={orderSearchTerm}
+            onChange={(e) => setOrderSearchTerm(e.target.value)}
+            style={{ paddingRight: '35px' }}
+          />
+        </div>
+
+        <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+          {filteredPatients.length === 0 ? (
             <div className="empty-state" style={{ backgroundColor: 'transparent', boxShadow: 'none' }}>
               <CheckCircle size={60} color="#10B981" style={{ marginBottom: '15px' }} />
               <h3 className="empty-title">ممتاز! لا توجد نواقص أدوية حالياً.</h3>
             </div>
           ) : (
-            patients.map(p => (
+            filteredPatients.map(p => (
               <div key={p.id} className="order-card">
                 <div className="order-actions">
                   <button onClick={() => onMarkReceived(p)} className="action-icon-btn" style={{ backgroundColor: '#059669', width: '36px', height: '36px' }}><CheckCircle size={18} /></button>
@@ -788,29 +672,18 @@ function OrdersModal({ patients, onClose, onMarkReceived, onMedicationMessage })
   );
 }
 
-function EmptyState({ hasSearch, showOnlyMissing, showRecycleBin, searchTerm }) {
-  const navigate = useNavigate();
+function EmptyState({ hasSearch, showOnlyMissing, showRecycleBin }) {
   const icon = showRecycleBin ? <Trash2 size={35} /> : (showOnlyMissing ? <CheckSquare size={35} /> : (hasSearch ? <Search size={35} /> : <Users size={35} />));
   const title = showRecycleBin ? "سلة المهملات فارغة" : (showOnlyMissing ? "لا توجد نواقص حالياً!" : (hasSearch ? "لا توجد نتائج مطابقة" : "لا توجد سجلات بعد"));
-  const desc = showRecycleBin ? "السجلات المحذوفة تظهر هنا لمدة 7 أيام قبل الحذف النهائي." : (showOnlyMissing ? "عاش! مفيش أي مريض مستني أدوية." : "سيظهر العملاء الذين تسجلهم هنا فوراً.");
+  const desc = showRecycleBin ? "السجلات المحذوفة تظهر هنا لمدة 7 أيام قبل الحذف النهائي." : (showOnlyMissing ? "عاش! مفيش أي مريض مستني أدوية." : "سيظهر المرضى الذين تسجلهم هنا فوراً.");
 
   return (
-    <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="empty-state">
       <div className={`empty-icon ${showRecycleBin ? 'deleted' : ''}`} style={{ backgroundColor: showRecycleBin ? '#FEE2E2' : '#FFF7ED', color: showRecycleBin ? '#EF4444' : '#EA580C' }}>
         {icon}
       </div>
       <h3 className="empty-title">{title}</h3>
       <p className="empty-description">{desc}</p>
-      {hasSearch && searchTerm && (
-        <button 
-          onClick={() => navigate(`/?phone=${encodeURIComponent(searchTerm)}`)}
-          className="btn btn-save"
-          style={{ marginTop: '15px', maxWidth: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-        >
-          <Users size={18} />
-          إضافة "{searchTerm}" كعميل جديد
-        </button>
-      )}
     </div>
   );
 }
