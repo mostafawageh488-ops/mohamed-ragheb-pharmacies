@@ -1,26 +1,19 @@
-/* --- Global Box Sizing & Mobile Overflow Fix --- */
+/* --- Global Box Sizing --- */
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
-html, body {
-  overflow-x: hidden; /* Fix massive horizontal overflow */
-  width: 100%;
-  max-width: 100vw;
-  margin: 0;
-  padding: 0;
-}
-
-/* --- Core Layout & Background --- */
+/* --- Core Layout & Background (IDENTICAL to PatientData wrapper) --- */
 .contracts-container {
   direction: rtl;
   padding: 2rem;
   width: 100%;
-  max-width: 1600px;
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden; /* Kills horizontal scrolling */
   margin: 0 auto;
   position: relative;
   z-index: 1;
-  overflow-x: hidden;
 }
 
 .contracts-bg {
@@ -208,9 +201,10 @@ html, body {
 
 
 /* --- Hidden Print-Ready PDF Container --- */
+/* FIXED BUG: position: fixed removes it from scroll layout entirely, preventing the massive RTL horizontal overflow */
 .offscreen-pdf {
-  position: absolute;
-  top: 0;
+  position: fixed;
+  top: -9999px;
   left: -9999px;
   visibility: visible;
   z-index: -100;
@@ -936,35 +930,27 @@ html, body {
   font-weight: 700;
 }
 
-
 /* ========================================================
    ================ MOBILE RESPONSIVENESS =================
    ======================================================== */
 
 @media (max-width: 992px) {
   .clients-list {
-    grid-template-columns: 1fr; /* Stack client cards vertically on tablets */
+    grid-template-columns: 1fr; 
   }
 }
 
 @media (max-width: 768px) {
+  
+  /* IDENTICAL CONTAINER STRUCTURE TO PatientData.css */
   .contracts-container {
-    padding: 1rem;
+    padding: 10px;
     width: 100%;
     max-width: 100vw;
     overflow-x: hidden;
   }
 
-  /* 1. Global fix for massive horizontal overflow */
-  html, body {
-    overflow-x: hidden !important;
-    width: 100vw;
-    max-width: 100vw;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* 2. Fix Grid Stacking */
+  /* Force stack grids vertically to 1 column */
   .clients-list {
     grid-template-columns: 1fr;
   }
@@ -975,29 +961,67 @@ html, body {
   .add-client-form {
     grid-template-columns: 1fr;
   }
-  
-  /* 3. Company Tabs: Horizontally Scrollable & Wrappable */
+
+  /* IDENTICAL CLIENT CARD STACKING TO PatientData.css */
+  .patient-card {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  .card-top-row {
+    flex-direction: column;
+    align-items: flex-end; /* Exactly as in PatientData.css */
+    gap: 15px;
+  }
+
+  .patient-identity {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+
+  .patient-name-block {
+    text-align: center;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .action-icon-btn {
+    width: 50px;
+    height: 50px;
+  }
+
+  .financial-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Tabs Wrapping */
   .tabs-container {
     flex-wrap: nowrap;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+    -webkit-overflow-scrolling: touch;
     padding: 15px 10px;
     justify-content: flex-start;
     border-radius: 20px;
     scroll-snap-type: x mandatory;
   }
   .tabs-container::-webkit-scrollbar {
-    display: none; /* Hide ugly scrollbars on mobile */
+    display: none; 
   }
   .tab-btn {
-    flex: 0 0 auto; /* Prevent tabs from shrinking */
+    flex: 0 0 auto; 
     width: auto;
     font-size: 1.1rem;
     padding: 12px 20px;
     scroll-snap-align: center;
   }
 
-  /* 4. Branding & Logo Scaling */
+  /* Branding Scaling */
   .animated-banner-title {
     font-size: 1.8rem;
     background-size: 300% auto;
@@ -1006,10 +1030,10 @@ html, body {
     font-size: 1.1rem;
   }
   .pharmacy-logo {
-    max-width: 100px;
+    max-width: 80px;
   }
 
-  /* 5. Floating Calculator Button Fixes */
+  /* Float button fixes */
   .floating-calc-btn {
     top: 15px;
     left: 15px;
@@ -1017,7 +1041,7 @@ html, body {
     height: 50px;
   }
 
-  /* 6. Modals Fixed to 95% Width */
+  /* Modals */
   .history-modal, .auth-modal, .calc-modal {
     width: 95% !important;
     max-width: 95vw !important;
@@ -1029,7 +1053,13 @@ html, body {
     font-size: 1.6rem;
   }
 
-  /* Fix table overflow inside Ledger History Modal */
+  .pin-input {
+    font-size: 2rem;
+    letter-spacing: 15px;
+    height: 60px;
+  }
+
+  /* Ledger History Modal internals */
   .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -1039,49 +1069,10 @@ html, body {
   .history-table th, .history-table td {
     padding: 12px 10px;
     font-size: 1.1rem;
-    white-space: nowrap; /* Prevent wrapping in tiny columns */
+    white-space: nowrap; 
   }
 
-  /* Client Card Internal Layout */
-  .card-top-row {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 15px;
-  }
-  .patient-identity {
-    flex-direction: column;
-    text-align: center;
-  }
-  .patient-name-block {
-    text-align: center;
-  }
-  .phone-number {
-    text-align: center;
-  }
-  .card-actions {
-    width: 100%;
-    justify-content: center;
-  }
-  .financial-stats {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  /* Form & Marquee Adjustments */
-  .add-form-card {
-    padding: 20px;
-  }
-  .marquee-container {
-    margin: 20px 0;
-    border-radius: 10px;
-  }
-  .marquee-item {
-    font-size: 1rem;
-    padding: 0 20px;
-  }
-
-  /* Ledger History Actions (Stacked neatly) */
+  /* Modals actions */
   .ledger-controls {
     flex-direction: column;
     align-items: stretch;
@@ -1097,5 +1088,24 @@ html, body {
   .excel-btn, .pdf-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  /* Search & Marquee */
+  .search-input {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 1.2rem;
+  }
+  .add-form-card {
+    padding: 20px;
+  }
+  .marquee-container {
+    margin: 20px 0;
+    border-radius: 10px;
+  }
+  .marquee-item {
+    font-size: 1rem;
+    padding: 0 20px;
   }
 }
