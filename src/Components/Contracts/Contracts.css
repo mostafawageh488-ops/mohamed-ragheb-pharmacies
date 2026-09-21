@@ -1,11 +1,26 @@
+/* --- Global Box Sizing & Mobile Overflow Fix --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow-x: hidden; /* Fix massive horizontal overflow */
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
 /* --- Core Layout & Background --- */
 .contracts-container {
   direction: rtl;
   padding: 2rem;
+  width: 100%;
   max-width: 1600px;
   margin: 0 auto;
   position: relative;
   z-index: 1;
+  overflow-x: hidden;
 }
 
 .contracts-bg {
@@ -270,7 +285,6 @@
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
-  flex-wrap: wrap;
 }
 
 .tab-btn {
@@ -568,7 +582,7 @@
   color: #0F172A !important;
 }
 
-/* --- EXACTLY TWO Client Cards Per Row --- */
+/* --- EXACTLY TWO Client Cards Per Row (Desktop) --- */
 .clients-list {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -922,34 +936,118 @@
   font-weight: 700;
 }
 
-/* Mobile Responsiveness */
+
+/* ========================================================
+   ================ MOBILE RESPONSIVENESS =================
+   ======================================================== */
+
 @media (max-width: 992px) {
   .clients-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr; /* Stack client cards vertically on tablets */
   }
 }
 
 @media (max-width: 768px) {
-  .animated-banner-title {
-    font-size: 2.2rem;
-  }
-  .tabs-container {
-    flex-direction: column;
-    border-radius: 25px;
-  }
-  .tab-btn {
+  .contracts-container {
+    padding: 1rem;
     width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* 1. Global fix for massive horizontal overflow */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* 2. Fix Grid Stacking */
+  .clients-list {
+    grid-template-columns: 1fr;
   }
   .quick-stats-container {
     grid-template-columns: 1fr;
+    padding: 0;
   }
   .add-client-form {
     grid-template-columns: 1fr;
   }
+  
+  /* 3. Company Tabs: Horizontally Scrollable & Wrappable */
+  .tabs-container {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+    padding: 15px 10px;
+    justify-content: flex-start;
+    border-radius: 20px;
+    scroll-snap-type: x mandatory;
+  }
+  .tabs-container::-webkit-scrollbar {
+    display: none; /* Hide ugly scrollbars on mobile */
+  }
+  .tab-btn {
+    flex: 0 0 auto; /* Prevent tabs from shrinking */
+    width: auto;
+    font-size: 1.1rem;
+    padding: 12px 20px;
+    scroll-snap-align: center;
+  }
+
+  /* 4. Branding & Logo Scaling */
+  .animated-banner-title {
+    font-size: 1.8rem;
+    background-size: 300% auto;
+  }
+  .animated-banner-subtitle {
+    font-size: 1.1rem;
+  }
+  .pharmacy-logo {
+    max-width: 100px;
+  }
+
+  /* 5. Floating Calculator Button Fixes */
+  .floating-calc-btn {
+    top: 15px;
+    left: 15px;
+    width: 50px;
+    height: 50px;
+  }
+
+  /* 6. Modals Fixed to 95% Width */
+  .history-modal, .auth-modal, .calc-modal {
+    width: 95% !important;
+    max-width: 95vw !important;
+    padding: 20px !important;
+    margin: 10px auto;
+  }
+  
+  .modal-title {
+    font-size: 1.6rem;
+  }
+
+  /* Fix table overflow inside Ledger History Modal */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    display: block;
+  }
+  .history-table th, .history-table td {
+    padding: 12px 10px;
+    font-size: 1.1rem;
+    white-space: nowrap; /* Prevent wrapping in tiny columns */
+  }
+
+  /* Client Card Internal Layout */
   .card-top-row {
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    text-align: center;
+    gap: 15px;
   }
   .patient-identity {
     flex-direction: column;
@@ -961,11 +1059,43 @@
   .phone-number {
     text-align: center;
   }
+  .card-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  .financial-stats {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Form & Marquee Adjustments */
+  .add-form-card {
+    padding: 20px;
+  }
+  .marquee-container {
+    margin: 20px 0;
+    border-radius: 10px;
+  }
+  .marquee-item {
+    font-size: 1rem;
+    padding: 0 20px;
+  }
+
+  /* Ledger History Actions (Stacked neatly) */
   .ledger-controls {
     flex-direction: column;
     align-items: stretch;
+    padding: 15px;
+  }
+  .date-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .date-input {
+    width: 100%;
   }
   .excel-btn, .pdf-btn {
     width: 100%;
+    justify-content: center;
   }
 }
