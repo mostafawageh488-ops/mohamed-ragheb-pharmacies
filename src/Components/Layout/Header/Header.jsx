@@ -31,9 +31,9 @@ const Header = ({ user }) => {
         }}>
           <UserCircle size={24} color="#ea580c" />
           <span style={{ fontWeight: '700', color: '#1e293b' }}>{user.username}</span>
-          
+
           {user.isAdmin && (
-            <button 
+            <button
               onClick={() => setShowAdminPanel(true)}
               style={{
                 background: 'none',
@@ -55,17 +55,17 @@ const Header = ({ user }) => {
 
       {/* Bottom Navigation */}
       <div style={{ position: 'fixed', bottom: '20px', left: '0', right: '0', display: 'flex', justifyContent: 'center', zIndex: 100 }}>
-        <nav style={{ 
-          display: 'flex', 
-          backgroundColor: '#00838f', 
-          borderRadius: '50px', 
+        <nav style={{
+          display: 'flex',
+          backgroundColor: '#00838f',
+          borderRadius: '50px',
           overflow: 'hidden',
           boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
           width: '400px',
           height: '60px'
         }}>
-          <Link 
-            to="/" 
+          <Link
+            to="/"
             style={{
               flex: 1,
               display: 'flex',
@@ -82,8 +82,8 @@ const Header = ({ user }) => {
             <PlusCircle size={20} style={{ marginBottom: '2px' }} />
             <span>تسجيل</span>
           </Link>
-          <Link 
-            to="/patients" 
+          <Link
+            to="/patients"
             style={{
               flex: 1,
               display: 'flex',
@@ -100,8 +100,8 @@ const Header = ({ user }) => {
             <Users size={20} style={{ marginBottom: '2px' }} />
             <span>السجلات</span>
           </Link>
-          <Link 
-            to="/chronic" 
+          <Link
+            to="/chronic"
             style={{
               flex: 1,
               display: 'flex',
@@ -118,6 +118,24 @@ const Header = ({ user }) => {
             <Activity size={20} style={{ marginBottom: '2px' }} />
             <span>الأمراض المزمنة</span>
           </Link>
+          <Link 
+  to="/contracts"
+  style={{
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: isActive('/contracts') ? '#efacc15' : '#ffffff',
+    textDecoration: 'none',
+    fontWeight: '600',
+    backgroundColor: isActive('/contracts') ? '#00000064' : 'transparent',
+    transition: 'all 0.3s'
+  }}
+>
+  <span style={{ fontSize: '20px', marginBottom: '2px' }}>💼</span>
+  <span>التعاقدات</span>
+</Link>
         </nav>
       </div>
 

@@ -8,6 +8,7 @@ import NeedsReport from './Components/PatientsData/NeedsReport';
 import ChronicPatients from './Components/PatientsData/ChronicPatients';
 import LoginModal from './Components/Auth/LoginModal';
 import './App.css';
+import Contracts from './Components/Contracts/Contracts';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -23,6 +24,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Form />} />
           <Route path="/patients" element={<PatientData />} />
+          <Route path="/contracts" element={<Contracts />} />
           <Route path="/needs" element={<NeedsReport />} />
           <Route path="/chronic" element={<ChronicPatients />} />
         </Routes>
