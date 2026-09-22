@@ -50,20 +50,67 @@
   background: #f0f9ff;
 }
 
-/* --- Glass-Morphism Calculator Modal --- */
+/* --- PERFECT MODAL RESPONSIVENESS OVERLAY --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0; 
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  direction: rtl;
+  box-sizing: border-box;
+  overflow: hidden; /* Prevents overlay itself from stretching/scrolling */
+}
+
+/* Base box styles for ALL modals inside overlay */
+.auth-modal, .history-modal, .calc-modal, .edit-modal {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 90vh; /* Prevents cutting off vertically */
+  overflow-y: auto; /* Internal scroll if content is long */
+}
+
+/* Specific Modal Widths & Visuals */
+.auth-modal, .edit-modal {
+  background-color: #FFFFFF;
+  border-radius: 30px;
+  padding: 40px;
+  max-width: 450px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.history-modal {
+  background-color: #FFFFFF;
+  border-radius: 30px;
+  padding: 40px;
+  max-width: 900px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Glass-Morphism Calculator Modal */
 .calc-modal {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(25px);
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 30px;
   padding: 30px;
-  width: 100%;
   max-width: 380px;
   box-shadow: 0 25px 50px rgba(14, 165, 233, 0.2);
   display: flex;
   flex-direction: column;
 }
 
+/* Calculator Inputs & Buttons */
 .calc-display input {
   width: 100%;
   padding: 20px;
@@ -201,7 +248,6 @@
 
 
 /* --- Hidden Print-Ready PDF Container --- */
-/* FIXED BUG: position: fixed removes it from scroll layout entirely, preventing the massive RTL horizontal overflow */
 .offscreen-pdf {
   position: fixed;
   top: -9999px;
@@ -279,6 +325,7 @@
   max-width: 900px;
   margin-left: auto;
   margin-right: auto;
+  flex-wrap: wrap; /* Helps handle multiple added companies smoothly */
 }
 
 .tab-btn {
@@ -305,6 +352,17 @@
   color: #ffffff;
   box-shadow: 0 8px 15px rgba(14, 165, 233, 0.3);
   transform: translateY(-2px);
+}
+
+.add-company-btn {
+  border: 2px dashed #CBD5E1;
+  color: #64748B;
+  flex: 0 1 auto;
+}
+.add-company-btn:hover {
+  background: #F8FAFC;
+  color: #0F172A;
+  border-color: #94A3B8;
 }
 
 /* --- Animated Branding Banner & Logo --- */
@@ -359,32 +417,6 @@
 @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes floatLogo { 0% { transform: translateY(0px); } 50% { transform: translateY(-12px); } 100% { transform: translateY(0px); } }
 
-/* --- Authentication Lock Screen Modal --- */
-.modal-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  direction: rtl;
-}
-
-.auth-modal {
-  background-color: #FFFFFF;
-  border-radius: 30px;
-  padding: 40px;
-  width: 100%;
-  max-width: 450px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
 
 .auth-icon-shell {
   background-color: #F0F9FF;
@@ -507,6 +539,7 @@
 .btn-primary { background: linear-gradient(135deg, #0ea5e9, #3b82f6); color: #FFFFFF; }
 .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #FFFFFF; }
 .btn-info { background-color: #e0f2fe; color: #0284c7; }
+.btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); color: #FFFFFF; }
 .pdf-btn {
   background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
   color: white !important;
@@ -556,6 +589,7 @@
   font-family: inherit;
   background: #F8FAFC;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .form-group input:focus {
@@ -576,10 +610,10 @@
   color: #0F172A !important;
 }
 
-/* --- EXACTLY TWO Client Cards Per Row (Desktop) --- */
+/* --- ONE CARD PER ROW STYLING (ALL SCREENS) --- */
 .clients-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr; /* Exactly one card per row globally */
   gap: 30px;
 }
 
@@ -663,6 +697,7 @@
 .card-actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap; /* Ensures buttons wrap smoothly instead of squishing */
 }
 
 .action-icon-btn {
@@ -749,19 +784,7 @@
   display: inline-block;
 }
 
-/* --- Ledger History Modal & Controls --- */
-.history-modal {
-  background-color: #FFFFFF;
-  border-radius: 30px;
-  padding: 40px;
-  width: 100%;
-  max-width: 900px;
-  max-height: 85vh;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-  display: flex;
-  flex-direction: column;
-}
-
+/* --- Ledger History Modal Buttons --- */
 .history-modal .modal-header {
   display: flex;
   justify-content: space-between;
@@ -771,7 +794,7 @@
   padding-bottom: 20px;
 }
 
-.history-modal .close-btn {
+.history-modal .close-btn, .auth-modal .close-btn {
   background: #FEF2F2;
   color: #DC2626;
   border: none;
@@ -783,7 +806,7 @@
   cursor: pointer;
   transition: transform 0.2s;
 }
-.history-modal .close-btn:hover {
+.history-modal .close-btn:hover, .auth-modal .close-btn:hover {
   transform: scale(1.1);
   background: #FECACA;
 }
@@ -841,16 +864,6 @@
 }
 .clear-filter-btn:hover {
   background: #FECACA;
-  transform: translateY(-2px);
-}
-
-.excel-btn {
-  background: linear-gradient(135deg, #10B981, #059669) !important; 
-  padding: 12px 25px !important;
-  font-size: 1.2rem !important;
-  box-shadow: 0 8px 15px rgba(16, 185, 129, 0.25);
-}
-.excel-btn:hover {
   transform: translateY(-2px);
 }
 
@@ -933,12 +946,6 @@
 /* ========================================================
    ================ MOBILE RESPONSIVENESS =================
    ======================================================== */
-
-@media (max-width: 992px) {
-  .clients-list {
-    grid-template-columns: 1fr; 
-  }
-}
 
 @media (max-width: 768px) {
   
@@ -1041,12 +1048,13 @@
     height: 50px;
   }
 
-  /* Modals */
-  .history-modal, .auth-modal, .calc-modal {
-    width: 95% !important;
-    max-width: 95vw !important;
+  /* Modals Fixed for Mobile */
+  .history-modal, .auth-modal, .calc-modal, .edit-modal {
+    width: 100% !important;
+    max-width: 100% !important;
     padding: 20px !important;
-    margin: 10px auto;
+    margin: 0 !important;
+    box-sizing: border-box;
   }
   
   .modal-title {

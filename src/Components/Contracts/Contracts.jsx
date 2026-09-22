@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from "../../utils/supabaseClient";import './Contracts.css';
+import { supabase } from "../../utils/supabaseClient";
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import './Contracts.css';
@@ -7,6 +7,22 @@ import './Contracts.css';
 const Contracts = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
+  
+  // --- Dynamic Companies State ---
+  const defaultCompanies = [
+    { id: 'EG Care', label: 'إيجي كير' },
+    { id: 'Al-Ahly Company', label: 'شركة الأهلي' },
+    { id: 'Health Insurance Company', label: 'التأمين الصحي' }
+  ];
+  const [companies, setCompanies] = useState(() => {
+    const saved = localStorage.getItem('contracts_companies');
+    return saved ? JSON.parse(saved) : defaultCompanies;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('contracts_companies', JSON.stringify(companies));
+  }, [companies]);
+
   const [activeCompany, setActiveCompany] = useState(null);
   const [clients, setClients] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,6 +38,13 @@ const Contracts = () => {
   const [showCalc, setShowCalc] = useState(false);
   const [calcInput, setCalcInput] = useState('');
   
+  // Edit Client State
+  const [editClientData, setEditClientData] = useState(null);
+
+  // WhatsApp Date Range States
+  const [waStartDate, setWaStartDate] = useState('');
+  const [waEndDate, setWaEndDate] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   
@@ -32,11 +55,27 @@ const Contracts = () => {
     outbound: 0,
   });
 
-  const companies = [
-    { id: 'EG Care', label: 'إيجي كير' },
-    { id: 'Al-Ahly Company', label: 'شركة الأهلي' },
-    { id: 'Health Insurance Company', label: 'التأمين الصحي' }
-  ];
+  const handleAddCompany = () => {
+    const name = prompt("أدخل اسم الشركة الجديدة:");
+    if (name && name.trim()) {
+      const newCompany = { id: name.trim(), label: name.trim() };
+      setCompanies([...companies, newCompany]);
+    }
+  };
+
+  const handleDeleteCompany = (e, companyId) => {
+    e.preventDefault(); // Stop default context menu
+    const pinInput = window.prompt("أدخل الرقم السري لحذف الشركة:");
+    if (pinInput === "1996") {
+      const updatedCompanies = companies.filter(c => c.id !== companyId);
+      setCompanies(updatedCompanies);
+      if (activeCompany === companyId) {
+        setActiveCompany(updatedCompanies.length > 0 ? updatedCompanies[0].id : null);
+      }
+    } else if (pinInput !== null) {
+      window.alert("الرقم السري غير صحيح!");
+    }
+  };
 
   // --- Calculator Logic (Using Functional Updates) ---
   const handleCalcClick = (val) => {
@@ -63,14 +102,12 @@ const Contracts = () => {
   // --- Keyboard Shortcuts (Calculator Support) ---
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Toggle calculator with Ctrl+F
       if (e.ctrlKey && e.key.toLowerCase() === 'f') {
         e.preventDefault(); 
         setShowCalc(prev => !prev);
         return;
       }
 
-      // Handle physical keyboard inputs ONLY when calculator is open
       if (showCalc) {
         const validKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '*', '/'];
         if (validKeys.includes(e.key)) {
@@ -134,7 +171,6 @@ const Contracts = () => {
         latestOutbound: client.transactions[0].outbound,
       }));
 
-      // Calculate Stats & Recent Transactions for Dashboard
       const totalInbound = data.reduce((sum, tx) => sum + tx.inbound, 0);
       const totalOutbound = data.reduce((sum, tx) => sum + tx.outbound, 0);
       const recentTx = [...data].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 5);
@@ -228,6 +264,53 @@ const Contracts = () => {
     }
   };
 
+  const handleEditClientSubmit = async (e) => {
+    e.preventDefault();
+    if (!editClientData.newName.trim() || !editClientData.newPhone.trim()) {
+      alert("الرجاء إدخال الاسم ورقم الهاتف بشكل صحيح");
+      return;
+    }
+    
+    setIsLoading(true);
+    const { error } = await supabase
+      .from('contracts')
+      .update({ 
+        client_name: editClientData.newName.trim(), 
+        phone_number: editClientData.newPhone.trim() 
+      })
+      .eq('client_name', editClientData.oldName); 
+
+    if (error) {
+      alert('حدث خطأ أثناء تعديل بيانات العميل: ' + error.message);
+      setIsLoading(false);
+    } else {
+      alert('تم تعديل بيانات العميل بنجاح!');
+      setEditClientData(null);
+      fetchClients(activeCompany);
+    }
+  };
+
+  const handleDeleteClient = async (e, clientName) => {
+    e.stopPropagation();
+    const isConfirmed = window.confirm("هل أنت متأكد من حذف هذا العميل وجميع معاملاته نهائياً؟");
+    if (isConfirmed) {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('contracts')
+        .delete()
+        .eq('client_name', clientName)
+        .eq('company_name', activeCompany);
+        
+      if (error) {
+        alert("حدث خطأ أثناء الحذف: " + error.message);
+        setIsLoading(false);
+      } else {
+        alert("تم الحذف بنجاح!");
+        fetchClients(activeCompany);
+      }
+    }
+  };
+
   const openWhatsApp = (client, e) => {
     e.stopPropagation(); 
     const today = new Date().toLocaleDateString('en-GB'); 
@@ -235,6 +318,38 @@ const Contracts = () => {
     const message = `أهلاً بحضرتك أ. ${client.client_name} في صيدليات دكتور محمد راغب قريطم.\nنسعد بخدمتكم دائماً.\nإجمالي المنصرف يوم ${today} هو: ${client.latestOutbound} جنيه.\nالرصيد المتبقي: ${client.balance} جنيه.\nمع تمنياتنا بدوام الصحة والعافية.`;
     const encodedMessage = encodeURIComponent(message);
     let phone = client.phone_number;
+    if (phone.startsWith('01')) phone = '2' + phone; 
+    else if (phone.startsWith('+')) phone = phone.substring(1); 
+    
+    const url = `https://wa.me/${phone}?text=${encodedMessage}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const sendRangeWhatsApp = () => {
+    if (!waStartDate || !waEndDate) {
+      alert("الرجاء تحديد تاريخ البداية والنهاية");
+      return;
+    }
+    
+    const filtered = selectedClientHistory.transactions.filter(tx => {
+      if (!tx.created_at) return false;
+      const txDate = tx.created_at.split('T')[0];
+      return txDate >= waStartDate && txDate <= waEndDate;
+    });
+    
+    if (filtered.length === 0) {
+      alert("لا توجد معاملات في هذه الفترة المحددة.");
+      return;
+    }
+
+    const totalIn = filtered.reduce((sum, tx) => sum + tx.inbound, 0);
+    const totalOut = filtered.reduce((sum, tx) => sum + tx.outbound, 0);
+    const finalBalance = selectedClientHistory.balance;
+
+    const message = `كشف حساب من ${waStartDate} إلى ${waEndDate}: إجمالي الوارد خلال الفترة: ${totalIn}, إجمالي المنصرف خلال الفترة: ${totalOut}, الرصيد النهائي الحالي: ${finalBalance}.`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    let phone = selectedClientHistory.phone_number;
     if (phone.startsWith('01')) phone = '2' + phone; 
     else if (phone.startsWith('+')) phone = phone.substring(1); 
     
@@ -253,7 +368,7 @@ const Contracts = () => {
     if (!selectedClientHistory || displayTransactions.length === 0) return;
     
     const exportData = displayTransactions.map(tx => ({
-      'التاريخ': tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-GB') : 'غير متوفر',
+      'التاريخ': tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'غير متوفر',
       'الوارد': tx.inbound,
       'المنصرف': tx.outbound,
       'الرصيد': tx.balance
@@ -276,7 +391,6 @@ const Contracts = () => {
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
-    // Using setTimeout ensures React has fully painted the DOM elements with updated state before capture
     setTimeout(() => {
       html2pdf().set(opt).from(element).save();
     }, 300);
@@ -328,7 +442,7 @@ const Contracts = () => {
         <table className="pdf-table">
           <thead>
             <tr>
-              <th>التاريخ</th>
+              <th>التاريخ والوقت</th>
               <th>الوارد (ج.م)</th>
               <th>المنصرف (ج.م)</th>
               <th>الرصيد (ج.م)</th>
@@ -337,7 +451,9 @@ const Contracts = () => {
           <tbody>
             {displayTransactions.map(tx => (
               <tr key={tx.id}>
-                <td>{tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-GB') : 'غير متوفر'}</td>
+                <td style={{ direction: 'ltr', textAlign: 'right' }}>
+                  {tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'غير متوفر'}
+                </td>
                 <td>+{tx.inbound}</td>
                 <td>-{tx.outbound}</td>
                 <td style={{ fontWeight: 'bold' }}>{tx.balance}</td>
@@ -377,7 +493,6 @@ const Contracts = () => {
         </div>
       )}
 
-      {/* Floating Header Calculator Button */}
       <button className="floating-calc-btn" onClick={() => setShowCalc(true)} title="فتح الآلة الحاسبة (Ctrl + F)">
         <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
@@ -387,7 +502,7 @@ const Contracts = () => {
       {/* 1. Quick Add Transaction Modal */}
       {quickAddClient && (
         <div className="modal-overlay" onClick={() => setQuickAddClient(null)}>
-          <div className="auth-modal" style={{ maxWidth: '600px', width: '95%' }} onClick={e => e.stopPropagation()}>
+          <div className="auth-modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
               <h2 className="modal-title" style={{ margin: 0 }}>إضافة معاملة سريعة</h2>
               <button className="close-btn" onClick={() => setQuickAddClient(null)}>✕</button>
@@ -425,8 +540,33 @@ const Contracts = () => {
           </div>
         </div>
       )}
+
+      {/* 2. Edit Client Modal */}
+      {editClientData && (
+        <div className="modal-overlay" onClick={() => setEditClientData(null)}>
+          <div className="edit-modal auth-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ width: '100%', display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h2 className="modal-title" style={{ margin: 0 }}>تعديل بيانات العميل</h2>
+              <button className="close-btn" onClick={() => setEditClientData(null)}>✕</button>
+            </div>
+            <form onSubmit={handleEditClientSubmit} className="add-client-form" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className="form-group">
+                <label>اسم العميل</label>
+                <input required type="text" value={editClientData.newName} onChange={(e) => setEditClientData({...editClientData, newName: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label>رقم الهاتف</label>
+                <input required type="text" value={editClientData.newPhone} onChange={(e) => setEditClientData({...editClientData, newPhone: e.target.value})} dir="ltr" />
+              </div>
+              <button type="submit" className="action-btn btn-primary" style={{ width: '100%', height: '54px', marginTop: '10px' }}>
+                حفظ التعديلات وتحديث كل المعاملات
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       
-      {/* 2. Ledger History Modal */}
+      {/* 3. Ledger History Modal */}
       {selectedClientHistory && (
         <div className="modal-overlay" onClick={() => setSelectedClientHistory(null)}>
           <div className="history-modal" onClick={e => e.stopPropagation()}>
@@ -465,11 +605,29 @@ const Contracts = () => {
               </div>
             </div>
 
+            {/* WhatsApp Date Range Sender */}
+            <div className="wa-range-container" style={{ background: '#F8FAFC', padding: '15px', borderRadius: '15px', marginBottom: '25px', display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid #E2E8F0' }}>
+              <div className="form-group" style={{ flex: '1', minWidth: '150px' }}>
+                <label>من تاريخ (واتساب):</label>
+                <input type="date" className="date-input" value={waStartDate} onChange={e => setWaStartDate(e.target.value)} />
+              </div>
+              <div className="form-group" style={{ flex: '1', minWidth: '150px' }}>
+                <label>إلى تاريخ (واتساب):</label>
+                <input type="date" className="date-input" value={waEndDate} onChange={e => setWaEndDate(e.target.value)} />
+              </div>
+              <button className="action-btn btn-success" onClick={sendRangeWhatsApp} style={{ flex: '1', minWidth: '250px' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '8px' }}>
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.663-2.06-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                </svg>
+                إرسال كشف واتساب للفترة
+              </button>
+            </div>
+
             <div className="table-responsive">
               <table className="history-table">
                 <thead>
                   <tr>
-                    <th>التاريخ</th>
+                    <th>التاريخ والوقت</th>
                     <th>الوارد</th>
                     <th>المنصرف</th>
                     <th>الرصيد وقتها</th>
@@ -481,7 +639,9 @@ const Contracts = () => {
                   ) : (
                     displayTransactions.map(tx => (
                       <tr key={tx.id}>
-                        <td>{tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-GB') : 'غير متوفر'}</td>
+                        <td style={{ direction: 'ltr', textAlign: 'right' }}>
+                          {tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'غير متوفر'}
+                        </td>
                         <td className="positive">+{tx.inbound}</td>
                         <td className="negative">-{tx.outbound}</td>
                         <td className={tx.balance >= 0 ? 'positive' : 'negative'}>{tx.balance}</td>
@@ -505,10 +665,15 @@ const Contracts = () => {
               key={company.id}
               className={`tab-btn ${activeCompany === company.id ? 'active' : ''}`}
               onClick={() => setActiveCompany(company.id)}
+              onContextMenu={(e) => handleDeleteCompany(e, company.id)}
+              title="كليك يمين لحذف الشركة"
             >
               {company.label}
             </button>
           ))}
+          <button className="tab-btn add-company-btn" onClick={handleAddCompany}>
+            + إضافة شركة
+          </button>
         </div>
 
         {/* Animated Branding Banner with Pharmacy Logo */}
@@ -642,6 +807,7 @@ const Contracts = () => {
                           </div>
                         </div>
                         <div className="card-actions">
+                          {/* 1. Quick Add Transaction Button */}
                           <button 
                             className="action-icon-btn btn-primary" 
                             onClick={(e) => { e.stopPropagation(); setQuickAddClient(client); }} 
@@ -651,6 +817,27 @@ const Contracts = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
                             </svg>
                           </button>
+                          {/* 2. Edit Client Button */}
+                          <button 
+                            className="action-icon-btn btn-info" 
+                            onClick={(e) => { e.stopPropagation(); setEditClientData({ oldName: client.client_name, newName: client.client_name, newPhone: client.phone_number }); }} 
+                            title="تعديل بيانات العميل"
+                          >
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                          </button>
+                          {/* 3. Delete Client Button */}
+                          <button 
+                            className="action-icon-btn btn-danger" 
+                            onClick={(e) => handleDeleteClient(e, client.client_name)} 
+                            title="حذف العميل"
+                          >
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
+                          {/* 4. Send WhatsApp Button */}
                           <button className="action-icon-btn btn-success" onClick={(e) => openWhatsApp(client, e)} title="إرسال رسالة واتساب">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.663-2.06-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
