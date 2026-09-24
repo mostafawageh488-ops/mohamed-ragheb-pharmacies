@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from "../../utils/supabaseClient";
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
@@ -26,6 +26,7 @@ const Contracts = () => {
   const [activeCompany, setActiveCompany] = useState(null);
   const [clients, setClients] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAlphabetical, setIsAlphabetical] = useState(false);
   
   // Dashboard Stats State
   const [companyStats, setCompanyStats] = useState({ totalClients: 0, totalInbound: 0, totalOutbound: 0, recentTransactions: [] });
@@ -34,9 +35,16 @@ const Contracts = () => {
   const [selectedClientHistory, setSelectedClientHistory] = useState(null);
   const [ledgerDateFilter, setLedgerDateFilter] = useState('');
   const [quickAddClient, setQuickAddClient] = useState(null);
-  const [quickFormData, setQuickFormData] = useState({ inbound: 0, outbound: 0 });
+  const [quickFormData, setQuickFormData] = useState({ inbound: 0, outbound: 0, customDate: '' });
+  
+  // Calculator States
   const [showCalc, setShowCalc] = useState(false);
   const [calcInput, setCalcInput] = useState('');
+  
+  // Draggable Calculator Logic
+  const [calcPos, setCalcPos] = useState({ x: window.innerWidth / 2 - 190, y: window.innerHeight / 2 - 250 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Edit Client State
   const [editClientData, setEditClientData] = useState(null);
@@ -51,20 +59,27 @@ const Contracts = () => {
   const [formData, setFormData] = useState({
     client_name: '',
     phone_number: '',
+    client_type: 'فاتورة',
     inbound: 0,
     outbound: 0,
   });
 
+  // --- PIN Protected Actions ---
   const handleAddCompany = () => {
-    const name = prompt("أدخل اسم الشركة الجديدة:");
-    if (name && name.trim()) {
-      const newCompany = { id: name.trim(), label: name.trim() };
-      setCompanies([...companies, newCompany]);
+    const pinInput = window.prompt("أدخل الرقم السري لإضافة شركة:");
+    if (pinInput === "1996") {
+      const name = prompt("أدخل اسم الشركة الجديدة:");
+      if (name && name.trim()) {
+        const newCompany = { id: name.trim(), label: name.trim() };
+        setCompanies([...companies, newCompany]);
+      }
+    } else if (pinInput !== null) {
+      window.alert("الرقم السري غير صحيح!");
     }
   };
 
   const handleDeleteCompany = (e, companyId) => {
-    e.preventDefault(); // Stop default context menu
+    e.preventDefault(); 
     const pinInput = window.prompt("أدخل الرقم السري لحذف الشركة:");
     if (pinInput === "1996") {
       const updatedCompanies = companies.filter(c => c.id !== companyId);
@@ -77,14 +92,72 @@ const Contracts = () => {
     }
   };
 
-  // --- Calculator Logic (Using Functional Updates) ---
+  const handleDeleteClient = async (e, clientName) => {
+    e.stopPropagation();
+    const pinInput = window.prompt("أدخل الرقم السري لحذف العميل نهائياً:");
+    if (pinInput === "1996") {
+      setIsLoading(true);
+      const { error } = await supabase
+        .from('contracts')
+        .delete()
+        .eq('client_name', clientName)
+        .eq('company_name', activeCompany);
+        
+      if (error) {
+        alert("حدث خطأ أثناء الحذف: " + error.message);
+        setIsLoading(false);
+      } else {
+        alert("تم الحذف بنجاح!");
+        fetchClients(activeCompany);
+      }
+    } else if (pinInput !== null) {
+      window.alert("الرقم السري غير صحيح!");
+    }
+  };
+
+  // --- Draggable Calculator Logic ---
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - calcPos.x,
+      y: e.clientY - calcPos.y
+    });
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setCalcPos({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
+
+  // --- Calculator Logic & Keybinds ---
   const handleCalcClick = (val) => {
-    if (val === 'C') {
+    if (val === 'C' || val === 'c') {
       setCalcInput('');
     } else if (val === '=') {
       setCalcInput((prev) => {
         try {
-          // eslint-disable-next-line
           const result = new Function('return ' + prev)();
           return String(result);
         } catch (e) {
@@ -99,15 +172,16 @@ const Contracts = () => {
     }
   };
 
-  // --- Keyboard Shortcuts (Calculator Support) ---
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key.toLowerCase() === 'f') {
+      // Toggle shortcut Ctrl + Y
+      if (e.ctrlKey && e.key.toLowerCase() === 'y') {
         e.preventDefault(); 
         setShowCalc(prev => !prev);
         return;
       }
-
+      
+      // Full Keyboard Integration when calculator is open
       if (showCalc) {
         const validKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '*', '/'];
         if (validKeys.includes(e.key)) {
@@ -122,10 +196,12 @@ const Contracts = () => {
         } else if (e.key === 'Escape') {
           e.preventDefault();
           setShowCalc(false);
+        } else if (e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          handleCalcClick('C');
         }
       }
     };
-    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showCalc]);
@@ -158,10 +234,12 @@ const Contracts = () => {
           grouped[name] = {
             client_name: name,
             phone_number: row.phone_number,
+            client_type: row.client_type || 'فاتورة',
             transactions: []
           };
         }
         grouped[name].phone_number = row.phone_number; 
+        grouped[name].client_type = row.client_type || grouped[name].client_type;
         grouped[name].transactions.unshift(row);
       });
 
@@ -169,6 +247,7 @@ const Contracts = () => {
         ...client,
         balance: client.transactions[0].balance,
         latestOutbound: client.transactions[0].outbound,
+        latest_date: new Date(client.transactions[0].created_at || 0).getTime()
       }));
 
       const totalInbound = data.reduce((sum, tx) => sum + tx.inbound, 0);
@@ -195,6 +274,21 @@ const Contracts = () => {
     }
   }, [activeCompany]);
 
+  // --- Sorting Logic ---
+  const sortedClients = useMemo(() => {
+    let sorted = [...clients];
+    if (isAlphabetical) {
+      sorted.sort((a, b) => a.client_name.localeCompare(b.client_name, 'ar'));
+    } else {
+      sorted.sort((a, b) => b.latest_date - a.latest_date); 
+    }
+    return sorted;
+  }, [clients, isAlphabetical]);
+
+  const filteredClients = sortedClients.filter(c => 
+    c.client_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -219,6 +313,7 @@ const Contracts = () => {
           company_name: activeCompany,
           client_name: clientName,
           phone_number: formData.phone_number,
+          client_type: formData.client_type,
           inbound: Number(formData.inbound),
           outbound: Number(formData.outbound),
           balance: newBalance,
@@ -229,7 +324,7 @@ const Contracts = () => {
       alert('حدث خطأ أثناء حفظ المعاملة: ' + error.message);
     } else {
       alert('تم حفظ المعاملة بنجاح!');
-      setFormData({ client_name: '', phone_number: '', inbound: 0, outbound: 0 });
+      setFormData({ client_name: '', phone_number: '', client_type: 'فاتورة', inbound: 0, outbound: 0 });
       setShowAddForm(false);
       fetchClients(activeCompany);
     }
@@ -241,25 +336,30 @@ const Contracts = () => {
     const outNum = Number(quickFormData.outbound);
     const newBalance = quickAddClient.balance + inNum - outNum;
     
+    const newTransaction = {
+      company_name: activeCompany,
+      client_name: quickAddClient.client_name,
+      phone_number: quickAddClient.phone_number,
+      client_type: quickAddClient.client_type,
+      inbound: inNum,
+      outbound: outNum,
+      balance: newBalance,
+    };
+
+    if (quickFormData.customDate) {
+      newTransaction.created_at = new Date(quickFormData.customDate).toISOString();
+    }
+    
     const { error } = await supabase
       .from('contracts')
-      .insert([
-        {
-          company_name: activeCompany,
-          client_name: quickAddClient.client_name,
-          phone_number: quickAddClient.phone_number,
-          inbound: inNum,
-          outbound: outNum,
-          balance: newBalance,
-        },
-      ]);
+      .insert([newTransaction]);
 
     if (error) {
       alert('حدث خطأ أثناء إضافة المعاملة: ' + error.message);
     } else {
       alert('تمت إضافة المعاملة بنجاح!');
       setQuickAddClient(null);
-      setQuickFormData({ inbound: 0, outbound: 0 });
+      setQuickFormData({ inbound: 0, outbound: 0, customDate: '' });
       fetchClients(activeCompany);
     }
   };
@@ -276,7 +376,8 @@ const Contracts = () => {
       .from('contracts')
       .update({ 
         client_name: editClientData.newName.trim(), 
-        phone_number: editClientData.newPhone.trim() 
+        phone_number: editClientData.newPhone.trim(),
+        client_type: editClientData.newType
       })
       .eq('client_name', editClientData.oldName); 
 
@@ -287,27 +388,6 @@ const Contracts = () => {
       alert('تم تعديل بيانات العميل بنجاح!');
       setEditClientData(null);
       fetchClients(activeCompany);
-    }
-  };
-
-  const handleDeleteClient = async (e, clientName) => {
-    e.stopPropagation();
-    const isConfirmed = window.confirm("هل أنت متأكد من حذف هذا العميل وجميع معاملاته نهائياً؟");
-    if (isConfirmed) {
-      setIsLoading(true);
-      const { error } = await supabase
-        .from('contracts')
-        .delete()
-        .eq('client_name', clientName)
-        .eq('company_name', activeCompany);
-        
-      if (error) {
-        alert("حدث خطأ أثناء الحذف: " + error.message);
-        setIsLoading(false);
-      } else {
-        alert("تم الحذف بنجاح!");
-        fetchClients(activeCompany);
-      }
     }
   };
 
@@ -330,7 +410,6 @@ const Contracts = () => {
       alert("الرجاء تحديد تاريخ البداية والنهاية");
       return;
     }
-    
     const filtered = selectedClientHistory.transactions.filter(tx => {
       if (!tx.created_at) return false;
       const txDate = tx.created_at.split('T')[0];
@@ -341,11 +420,9 @@ const Contracts = () => {
       alert("لا توجد معاملات في هذه الفترة المحددة.");
       return;
     }
-
     const totalIn = filtered.reduce((sum, tx) => sum + tx.inbound, 0);
     const totalOut = filtered.reduce((sum, tx) => sum + tx.outbound, 0);
     const finalBalance = selectedClientHistory.balance;
-
     const message = `كشف حساب من ${waStartDate} إلى ${waEndDate}: إجمالي الوارد خلال الفترة: ${totalIn}, إجمالي المنصرف خلال الفترة: ${totalOut}, الرصيد النهائي الحالي: ${finalBalance}.`;
     
     const encodedMessage = encodeURIComponent(message);
@@ -363,17 +440,15 @@ const Contracts = () => {
     return tx.created_at.split('T')[0] === ledgerDateFilter;
   }) || [];
 
-  // --- Exports (Excel & PDF) ---
+  // --- Exports ---
   const handleExportExcel = () => {
     if (!selectedClientHistory || displayTransactions.length === 0) return;
-    
     const exportData = displayTransactions.map(tx => ({
       'التاريخ': tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'غير متوفر',
       'الوارد': tx.inbound,
       'المنصرف': tx.outbound,
       'الرصيد': tx.balance
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "كشف الحساب");
@@ -387,7 +462,7 @@ const Contracts = () => {
       margin:       15,
       filename:     `كشف_حساب_${selectedClientHistory.client_name}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
+      html2canvas:  { scale: 2, useCORS: true, logging: true },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     
@@ -396,12 +471,6 @@ const Contracts = () => {
     }, 300);
   };
 
-  const filteredClients = clients.filter(c => 
-    c.client_name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // === RENDER METHODS ===
-  
   if (!isAuthenticated) {
     return (
       <>
@@ -427,19 +496,22 @@ const Contracts = () => {
     <>
       <div className="contracts-bg"></div>
 
-      {/* Hidden Print-Ready PDF Container */}
+      {/* PART 1: The Fix - Position Absolute and Strict Records PDF Styling */}
       <div id="pdf-export-content" className="offscreen-pdf">
-        <div className="pdf-header">
-          <img src="/logo.png" alt="شعار الصيدلية" className="pdf-logo" />
-          <h2 className="pdf-title">صيدليات دكتور محمد راغب قريطم</h2>
-          <p className="pdf-subtitle">كشف حساب عملاء التعاقدات (ERP System)</p>
+        <div className="pdf-doc-header">
+          <div className="pdf-logo-placeholder">💊</div>
+          <h1>صيدليات دكتور محمد راغب قريطم</h1>
+          <p>كشف حساب عملاء التعاقدات (PDF)</p>
+          <div className="pdf-date">
+            تاريخ التقرير: {new Intl.DateTimeFormat("ar-EG", { dateStyle: 'full' }).format(new Date())}
+          </div>
         </div>
         <div className="pdf-client-info">
-          <div><strong>اسم العميل:</strong> {selectedClientHistory?.client_name}</div>
-          <div><strong>رقم الهاتف:</strong> <span dir="ltr">{selectedClientHistory?.phone_number}</span></div>
+          <div><strong>العميل:</strong> {selectedClientHistory?.client_name}</div>
+          <div><strong>الموبايل:</strong> <span dir="ltr">{selectedClientHistory?.phone_number}</span></div>
           <div><strong>الشركة:</strong> {companies.find(c => c.id === activeCompany)?.label}</div>
         </div>
-        <table className="pdf-table">
+        <table className="pdf-doc-table">
           <thead>
             <tr>
               <th>التاريخ والوقت</th>
@@ -454,46 +526,59 @@ const Contracts = () => {
                 <td style={{ direction: 'ltr', textAlign: 'right' }}>
                   {tx.created_at ? new Date(tx.created_at).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : 'غير متوفر'}
                 </td>
-                <td>+{tx.inbound}</td>
-                <td>-{tx.outbound}</td>
-                <td style={{ fontWeight: 'bold' }}>{tx.balance}</td>
+                <td style={{ color: '#059669', fontWeight: 'bold' }}>+{tx.inbound}</td>
+                <td style={{ color: '#DC2626', fontWeight: 'bold' }}>-{tx.outbound}</td>
+                <td style={{ fontWeight: 'bold', color: '#0F172A' }}>{tx.balance}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        <div className="pdf-footer">
+          تم إنشاء هذا التقرير تلقائياً بواسطة نظام إدارة صيدليات دكتور محمد راغب قريطم<br/>
+          <b>Designed By Dr. Mostafa Wageh Sarhan</b>
+        </div>
       </div>
 
-      {/* Calculator Modal */}
+      {/* --- DRAGGABLE CALCULATOR WIDGET --- */}
       {showCalc && (
-        <div className="modal-overlay" onClick={() => setShowCalc(false)}>
-          <div className="calc-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header" style={{ marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#0F172A' }}>آلة حاسبة سريعة</h3>
-              <button className="close-btn" onClick={() => setShowCalc(false)}>✕</button>
-            </div>
-            <div className="calc-display">
-              <input type="text" value={calcInput} readOnly placeholder="0" />
-            </div>
-            <div className="calc-buttons">
-              {['7', '8', '9', '/'].map(btn => (
-                <button key={btn} className={`calc-btn ${btn==='/'?'op':''}`} onClick={() => handleCalcClick(btn)}>{btn}</button>
-              ))}
-              {['4', '5', '6', '*'].map(btn => (
-                <button key={btn} className={`calc-btn ${btn==='*'?'op':''}`} onClick={() => handleCalcClick(btn)}>{btn}</button>
-              ))}
-              {['1', '2', '3', '-'].map(btn => (
-                <button key={btn} className={`calc-btn ${btn==='-'?'op':''}`} onClick={() => handleCalcClick(btn)}>{btn}</button>
-              ))}
-              <button className="calc-btn clear" onClick={() => handleCalcClick('C')}>C</button>
-              <button className="calc-btn" onClick={() => handleCalcClick('0')}>0</button>
-              <button className="calc-btn op" onClick={() => handleCalcClick('+')}>+</button>
-              <button className="calc-btn eq" onClick={() => handleCalcClick('=')}>=</button>
-            </div>
+        <div 
+          className="calc-modal-floating" 
+          style={{ 
+            left: `${calcPos.x}px`, 
+            top: `${calcPos.y}px`
+          }}
+          onClick={e => e.stopPropagation()}
+        >
+          <div 
+            className="calc-header" 
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+            onMouseDown={handleMouseDown}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#0F172A', pointerEvents: 'none' }}>آلة حاسبة سريعة</h3>
+            <button className="close-btn" onClick={() => setShowCalc(false)}>✕</button>
+          </div>
+          <div className="calc-display">
+            <input type="text" value={calcInput} readOnly placeholder="0" />
+          </div>
+          <div className="calc-buttons">
+            {['7', '8', '9', '/'].map(btn => (
+              <button key={btn} className={`calc-btn ${btn==='/'?'op':''}`} onClick={() => handleCalcClick(btn)}>{btn}</button>
+            ))}
+            {['4', '5', '6', '*'].map(btn => (
+              <button key={btn} className={`calc-btn ${btn==='*'?'op':''}`} onClick={() => handleCalcClick(btn)}>{btn}</button>
+            ))}
+            {['1', '2', '3', '-'].map(btn => (
+              <button key={btn} className={`calc-btn ${btn==='-'?'op':''}`} onClick={() => handleCalcClick(btn)}>{btn}</button>
+            ))}
+            <button className="calc-btn clear" onClick={() => handleCalcClick('C')}>C</button>
+            <button className="calc-btn" onClick={() => handleCalcClick('0')}>0</button>
+            <button className="calc-btn op" onClick={() => handleCalcClick('+')}>+</button>
+            <button className="calc-btn eq" onClick={() => handleCalcClick('=')}>=</button>
           </div>
         </div>
       )}
 
-      <button className="floating-calc-btn" onClick={() => setShowCalc(true)} title="فتح الآلة الحاسبة (Ctrl + F)">
+      <button className="floating-calc-btn" onClick={() => setShowCalc(true)} title="فتح الآلة الحاسبة (Ctrl + Y)">
         <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
         </svg>
@@ -526,6 +611,10 @@ const Contracts = () => {
                   <label>المنصرف (تكلفة الأدوية)</label>
                   <input required type="number" value={quickFormData.outbound} onChange={(e) => setQuickFormData({...quickFormData, outbound: e.target.value})} min="0" />
                 </div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label>تاريخ المعاملة (اختياري)</label>
+                  <input type="datetime-local" value={quickFormData.customDate} onChange={(e) => setQuickFormData({...quickFormData, customDate: e.target.value})} />
+                </div>
               </div>
 
               <div className="form-group" style={{ marginTop: '10px' }}>
@@ -557,6 +646,13 @@ const Contracts = () => {
               <div className="form-group">
                 <label>رقم الهاتف</label>
                 <input required type="text" value={editClientData.newPhone} onChange={(e) => setEditClientData({...editClientData, newPhone: e.target.value})} dir="ltr" />
+              </div>
+              <div className="form-group">
+                <label>نوع العميل</label>
+                <select required value={editClientData.newType} onChange={(e) => setEditClientData({...editClientData, newType: e.target.value})} className="custom-select">
+                  <option value="فاتورة">فاتورة</option>
+                  <option value="مزمن">مزمن</option>
+                </select>
               </div>
               <button type="submit" className="action-btn btn-primary" style={{ width: '100%', height: '54px', marginTop: '10px' }}>
                 حفظ التعديلات وتحديث كل المعاملات
@@ -605,7 +701,6 @@ const Contracts = () => {
               </div>
             </div>
 
-            {/* WhatsApp Date Range Sender */}
             <div className="wa-range-container" style={{ background: '#F8FAFC', padding: '15px', borderRadius: '15px', marginBottom: '25px', display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid #E2E8F0' }}>
               <div className="form-group" style={{ flex: '1', minWidth: '150px' }}>
                 <label>من تاريخ (واتساب):</label>
@@ -734,14 +829,25 @@ const Contracts = () => {
               </button>
             </div>
 
-            <div className="search-bar-container">
+            {/* PART 2: Alphabetical Toggle & Prominent Search */}
+            <div className="search-bar-wrapper">
               <input 
                 type="text" 
                 className="search-input" 
-                placeholder="ابحث عن اسم العميل لتسجيل معاملة أو عرض كشف حساب..." 
+                placeholder="🔍 ابحث عن اسم العميل لتسجيل معاملة أو عرض كشف حساب..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+              <button 
+                className={`sort-toggle-btn ${isAlphabetical ? 'active' : ''}`} 
+                onClick={() => setIsAlphabetical(!isAlphabetical)}
+                title={isAlphabetical ? "إلغاء الترتيب الأبجدي (العودة للأحدث)" : "تفعيل الترتيب الأبجدي"}
+              >
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"></path>
+                </svg>
+                <span className="sort-label">أبجدي</span>
+              </button>
             </div>
 
             {showAddForm && (
@@ -756,6 +862,13 @@ const Contracts = () => {
                     <input required type="text" name="phone_number" value={formData.phone_number} onChange={handleInputChange} placeholder="01xxxxxxxxx" dir="ltr" />
                   </div>
                   <div className="form-group">
+                    <label>نوع العميل</label>
+                    <select required name="client_type" value={formData.client_type} onChange={handleInputChange} className="custom-select">
+                      <option value="فاتورة">فاتورة</option>
+                      <option value="مزمن">مزمن</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
                     <label>الوارد (إيداع نقدي)</label>
                     <input required type="number" name="inbound" value={formData.inbound} onChange={handleInputChange} min="0" />
                   </div>
@@ -765,7 +878,7 @@ const Contracts = () => {
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label>النظام سيحسب الرصيد تلقائياً</label>
-                    <input type="text" value="يُحسب بناءً على تاريخ العميل" readOnly className="read-only-input" />
+                    <input type="text" value="يُحسب بناءً على المعاملات السابقة (إن وجدت)" readOnly className="read-only-input" />
                   </div>
                   <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
                     <button type="submit" className="action-btn btn-primary" style={{ height: '54px', width: '100%' }}>حفظ العميل</button>
@@ -803,11 +916,11 @@ const Contracts = () => {
                           <div className="patient-name-block">
                             <h3 className="patient-name">{client.client_name}</h3>
                             <p className="phone-number">{client.phone_number}</p>
+                            <span className="client-type-badge">{client.client_type}</span>
                             <span className="view-ledger-hint">عرض كشف الحساب وتصدير لـ Excel/PDF 📊</span>
                           </div>
                         </div>
                         <div className="card-actions">
-                          {/* 1. Quick Add Transaction Button */}
                           <button 
                             className="action-icon-btn btn-primary" 
                             onClick={(e) => { e.stopPropagation(); setQuickAddClient(client); }} 
@@ -817,17 +930,15 @@ const Contracts = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
                             </svg>
                           </button>
-                          {/* 2. Edit Client Button */}
                           <button 
                             className="action-icon-btn btn-info" 
-                            onClick={(e) => { e.stopPropagation(); setEditClientData({ oldName: client.client_name, newName: client.client_name, newPhone: client.phone_number }); }} 
+                            onClick={(e) => { e.stopPropagation(); setEditClientData({ oldName: client.client_name, newName: client.client_name, newPhone: client.phone_number, newType: client.client_type }); }} 
                             title="تعديل بيانات العميل"
                           >
                             <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                             </svg>
                           </button>
-                          {/* 3. Delete Client Button */}
                           <button 
                             className="action-icon-btn btn-danger" 
                             onClick={(e) => handleDeleteClient(e, client.client_name)} 
@@ -837,7 +948,6 @@ const Contracts = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
                           </button>
-                          {/* 4. Send WhatsApp Button */}
                           <button className="action-icon-btn btn-success" onClick={(e) => openWhatsApp(client, e)} title="إرسال رسالة واتساب">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.663-2.06-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
