@@ -277,23 +277,19 @@
 
 /* --- PART 1: Hidden Print-Ready PDF Container Fix & Styling --- */
 .offscreen-pdf {
-  /* THE FIX: Rendered in the tree with absolute dimensions, but entirely out of viewport */
   position: absolute;
   top: -9999px;
   left: -9999px;
   visibility: visible;
   z-index: -100;
-  
-  /* Styling exactly like Records / Form.jsx */
   width: 900px;
   background-color: #FFFFFF;
   direction: rtl;
   padding: 40px;
   font-family: 'Cairo', sans-serif;
-  color: #0F172A; /* Fallback for all nested text to prevent fading during capture */
+  color: #0F172A; 
 }
 
-/* Force dark contrast during HTML canvas render */
 .offscreen-pdf, .offscreen-pdf * {
   color: #0F172A; 
 }
@@ -426,7 +422,6 @@
   font-size: 1.4rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
 
@@ -439,7 +434,6 @@
   background: linear-gradient(135deg, #0ea5e9, #3b82f6);
   color: #ffffff;
   box-shadow: 0 8px 15px rgba(14, 165, 233, 0.3);
-  transform: translateY(-2px);
 }
 
 .add-company-btn {
@@ -577,7 +571,9 @@
   margin: 0;
 }
 
-/* --- PART 2: Search & Sorting Actions UI Wrapper --- */
+/* =======================================================
+   ==== PART 1: ANIMATED SEARCH & SORT ACTIONS WRAPPER ==== 
+   ======================================================= */
 .search-bar-wrapper {
   display: flex;
   gap: 15px;
@@ -591,25 +587,39 @@
 }
 
 .search-input {
-  flex: 1;
-  padding: 22px 35px;
+  width: 75px; /* Perfect Circle Icon State */
+  height: 75px;
+  padding: 0;
   border: 3px solid #0EA5E9;
   border-radius: 50px;
-  font-size: 1.4rem;
+  font-size: 2.2rem;
   font-family: inherit;
   font-weight: 800;
   outline: none;
-  text-align: right;
-  transition: all 0.3s;
-  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2); 
+  text-align: center;
+  /* Smooth horizontal expansion under 0.4s */
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              font-size 0.2s, 
+              box-shadow 0.3s, 
+              border-color 0.3s;
+  box-shadow: 0 10px 30px rgba(14, 165, 233, 0.15); 
   color: #0F172A;
   background-color: #FFFFFF; 
+  cursor: pointer;
+}
+
+.search-input.expanded {
+  width: 100%;
+  padding: 0 35px;
+  font-size: 1.4rem;
+  text-align: right;
+  cursor: text;
 }
 
 .search-input:focus {
   border-color: #3B82F6;
   box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.25); 
-  transform: translateY(-2px); 
 }
 
 .search-input::placeholder {
@@ -619,6 +629,7 @@
 
 /* Alphabetical Toggle Button */
 .sort-toggle-btn {
+  flex-shrink: 0; /* Prevents button from crushing when search expands */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -632,8 +643,6 @@
   font-size: 1.2rem;
   font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 .sort-toggle-btn:hover {
@@ -648,7 +657,10 @@
   box-shadow: 0 10px 30px rgba(14, 165, 233, 0.3);
 }
 
-/* --- Buttons --- */
+/* =======================================================
+   ==== PART 2: BUTTON MICRO-INTERACTIONS & GLOWS ======== 
+   ======================================================= */
+
 .action-btn {
   display: flex;
   align-items: center;
@@ -660,17 +672,73 @@
   font-size: 1.3rem;
   cursor: pointer;
   border: none;
-  transition: opacity 0.2s, transform 0.2s;
   font-family: inherit;
-}
-.action-btn:active {
-  transform: scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter 0.3s;
 }
 
+.action-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 65px;
+  height: 65px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              filter 0.3s,
+              background 0.3s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.tab-btn {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+}
+
+/* Active Press-Down Tactile Effect */
+.action-btn:active, .action-icon-btn:active, .tab-btn:active, .add-company-btn:active, .sort-toggle-btn:active {
+  transform: translateY(2px) scale(0.95) !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Specific Base Colors */
 .btn-primary { background: linear-gradient(135deg, #0ea5e9, #3b82f6); color: #FFFFFF; }
 .btn-success { background: linear-gradient(135deg, #10b981, #059669); color: #FFFFFF; }
 .btn-info { background-color: #e0f2fe; color: #0284c7; }
-.btn-danger { background: linear-gradient(135deg, #ef4444, #b91c1c); color: #FFFFFF; }
+
+/* Gorgeous Hover Glows */
+.action-btn.btn-primary:hover, .action-icon-btn.btn-primary:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.4);
+  filter: brightness(1.1);
+}
+.action-btn.btn-success:hover, .action-icon-btn.btn-success:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+  filter: brightness(1.1);
+}
+.action-btn.btn-info:hover, .action-icon-btn.btn-info:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.3);
+  filter: brightness(1.05);
+}
+
+/* 🗑️ Premium Delete Button Hover Tilt & Glow */
+.action-btn.btn-danger, .action-icon-btn.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #b91c1c); 
+  color: #FFFFFF;
+}
+.action-btn.btn-danger:hover, .action-icon-btn.btn-danger:hover {
+  transform: rotate(-10deg) scale(1.15) !important;
+  background: linear-gradient(135deg, #f87171, #ef4444); 
+  box-shadow: 0 15px 25px rgba(239, 68, 68, 0.4);
+  z-index: 10;
+}
+
+/* Export PDF Override */
 .pdf-btn {
   background: linear-gradient(135deg, #ef4444, #b91c1c) !important;
   color: white !important;
@@ -679,8 +747,10 @@
   box-shadow: 0 8px 15px rgba(239, 68, 68, 0.25);
 }
 .pdf-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) !important; 
+  box-shadow: 0 12px 20px rgba(239, 68, 68, 0.4) !important;
 }
+
 
 /* --- Add Form Card --- */
 .add-form-card {
@@ -852,26 +922,6 @@
   flex-wrap: wrap; 
 }
 
-.action-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 65px;
-  height: 65px;
-  border-radius: 20px;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-}
-
-.action-icon-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-}
-.action-icon-btn:active {
-  transform: scale(0.9);
-}
 
 .card-divider {
   height: 2px;
@@ -1252,10 +1302,12 @@
     padding: 0 10px;
   }
   
+  /* Make search input 100% by default on mobile so it doesn't break the layout */
   .search-input {
     margin-left: 0;
     width: 100%;
-    text-align: center;
+    padding: 0 25px;
+    text-align: right;
     font-size: 1.2rem;
   }
   

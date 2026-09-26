@@ -25,7 +25,10 @@ const Contracts = () => {
 
   const [activeCompany, setActiveCompany] = useState(null);
   const [clients, setClients] = useState([]);
+  
+  // Advanced Search State (for Animation)
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isAlphabetical, setIsAlphabetical] = useState(false);
   
   // Dashboard Stats State
@@ -115,6 +118,46 @@ const Contracts = () => {
     }
   };
 
+  const handleDeleteTransaction = async (e, transactionId) => {
+    e.stopPropagation();
+    const pinInput = window.prompt("أدخل الرقم السري لحذف هذه المعاملة:");
+    if (pinInput === "1996") {
+      const { error } = await supabase
+        .from('contracts')
+        .delete()
+        .eq('id', transactionId);
+
+      if (error) {
+        alert("حدث خطأ أثناء الحذف: " + error.message);
+      } else {
+        alert("تم حذف المعاملة بنجاح!");
+        
+        setSelectedClientHistory(prev => {
+          if (!prev) return prev;
+          const updatedTransactions = prev.transactions.filter(tx => tx.id !== transactionId);
+          
+          if (updatedTransactions.length === 0) {
+             return null; 
+          }
+          
+          const newBalance = updatedTransactions[0].balance;
+          const latestOutbound = updatedTransactions[0].outbound;
+          
+          return {
+            ...prev,
+            transactions: updatedTransactions,
+            balance: newBalance,
+            latestOutbound: latestOutbound
+          };
+        });
+        
+        fetchClients(activeCompany);
+      }
+    } else if (pinInput !== null) {
+      window.alert("الرقم السري غير صحيح!");
+    }
+  };
+
   // --- Draggable Calculator Logic ---
   const handleMouseDown = (e) => {
     setIsDragging(true);
@@ -174,14 +217,12 @@ const Contracts = () => {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Toggle shortcut Ctrl + Y
       if (e.ctrlKey && e.key.toLowerCase() === 'y') {
         e.preventDefault(); 
         setShowCalc(prev => !prev);
         return;
       }
       
-      // Full Keyboard Integration when calculator is open
       if (showCalc) {
         const validKeys = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '*', '/'];
         if (validKeys.includes(e.key)) {
@@ -271,6 +312,7 @@ const Contracts = () => {
       fetchClients(activeCompany);
       setShowAddForm(false);
       setSearchQuery(''); 
+      setIsSearchFocused(false);
     }
   }, [activeCompany]);
 
@@ -496,7 +538,7 @@ const Contracts = () => {
     <>
       <div className="contracts-bg"></div>
 
-      {/* PART 1: The Fix - Position Absolute and Strict Records PDF Styling */}
+      {/* PART 1: Hidden Print-Ready PDF Container */}
       <div id="pdf-export-content" className="offscreen-pdf">
         <div className="pdf-doc-header">
           <div className="pdf-logo-placeholder">💊</div>
@@ -726,11 +768,12 @@ const Contracts = () => {
                     <th>الوارد</th>
                     <th>المنصرف</th>
                     <th>الرصيد وقتها</th>
+                    <th data-html2canvas-ignore="true" style={{ width: '60px', textAlign: 'center' }}>إجراء</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayTransactions.length === 0 ? (
-                     <tr><td colSpan="4" style={{ textAlign: 'center', padding: '30px', fontWeight: 'bold' }}>لا توجد معاملات مطابقة للتاريخ المحدد</td></tr>
+                     <tr><td colSpan="5" style={{ textAlign: 'center', padding: '30px', fontWeight: 'bold' }}>لا توجد معاملات مطابقة للتاريخ المحدد</td></tr>
                   ) : (
                     displayTransactions.map(tx => (
                       <tr key={tx.id}>
@@ -740,6 +783,18 @@ const Contracts = () => {
                         <td className="positive">+{tx.inbound}</td>
                         <td className="negative">-{tx.outbound}</td>
                         <td className={tx.balance >= 0 ? 'positive' : 'negative'}>{tx.balance}</td>
+                        <td data-html2canvas-ignore="true" style={{ textAlign: 'center' }}>
+                          <button 
+                            className="action-icon-btn btn-danger" 
+                            style={{ width: '38px', height: '38px', padding: 0, margin: '0 auto' }}
+                            onClick={(e) => handleDeleteTransaction(e, tx.id)}
+                            title="حذف هذه المعاملة (يتطلب رمز سري)"
+                          >
+                            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -829,14 +884,16 @@ const Contracts = () => {
               </button>
             </div>
 
-            {/* PART 2: Alphabetical Toggle & Prominent Search */}
+            {/* PART 2: ANIMATED SEARCH BAR */}
             <div className="search-bar-wrapper">
               <input 
                 type="text" 
-                className="search-input" 
-                placeholder="🔍 ابحث عن اسم العميل لتسجيل معاملة أو عرض كشف حساب..." 
+                className={`search-input ${isSearchFocused || searchQuery ? 'expanded' : ''}`}
+                placeholder={isSearchFocused || searchQuery ? "ابحث عن اسم العميل لتسجيل معاملة أو عرض كشف حساب..." : "🔍"} 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
               />
               <button 
                 className={`sort-toggle-btn ${isAlphabetical ? 'active' : ''}`} 
