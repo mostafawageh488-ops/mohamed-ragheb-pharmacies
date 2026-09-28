@@ -201,6 +201,7 @@ const Contracts = () => {
     } else if (val === '=') {
       setCalcInput((prev) => {
         try {
+          // eslint-disable-next-line
           const result = new Function('return ' + prev)();
           return String(result);
         } catch (e) {
@@ -314,6 +315,7 @@ const Contracts = () => {
       setSearchQuery(''); 
       setIsSearchFocused(false);
     }
+  // eslint-disable-next-line
   }, [activeCompany]);
 
   // --- Sorting Logic ---
@@ -482,6 +484,10 @@ const Contracts = () => {
     return tx.created_at.split('T')[0] === ledgerDateFilter;
   }) || [];
 
+  // --- Dynamic Debt Settlement Calculation ---
+  const quickOutbound = Number(quickFormData.outbound) || 0;
+  const requiredInbound = quickAddClient ? (quickOutbound - quickAddClient.balance) : 0;
+
   // --- Exports ---
   const handleExportExcel = () => {
     if (!selectedClientHistory || displayTransactions.length === 0) return;
@@ -520,7 +526,9 @@ const Contracts = () => {
         <div className="modal-overlay">
           <div className="auth-modal">
             <div className="auth-icon-shell">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
             </div>
             <h2 className="modal-title">دخول الإدارة فقط</h2>
             <p className="auth-subtitle">الرجاء إدخال الرمز السري للوصول إلى قسم التعاقدات.</p>
@@ -653,6 +661,26 @@ const Contracts = () => {
                   <label>المنصرف (تكلفة الأدوية)</label>
                   <input required type="number" value={quickFormData.outbound} onChange={(e) => setQuickFormData({...quickFormData, outbound: e.target.value})} min="0" />
                 </div>
+
+                {/* Settle Debt Quick-Action Button */}
+                <div className="form-group" style={{ gridColumn: '1 / -1', marginTop: '5px' }}>
+                  <button 
+                    type="button" 
+                    className={`settle-btn ${requiredInbound > 0 ? 'active' : 'inactive'}`}
+                    onClick={() => {
+                      if (requiredInbound > 0) {
+                        setQuickFormData(prev => ({
+                          ...prev,
+                          inbound: requiredInbound
+                        }));
+                      }
+                    }}
+                    title="سداد المديونية المطلوبة كاش"
+                  >
+                    ✨ تصفير المديونية (دفع كاش)
+                  </button>
+                </div>
+
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>تاريخ المعاملة (اختياري)</label>
                   <input type="datetime-local" value={quickFormData.customDate} onChange={(e) => setQuickFormData({...quickFormData, customDate: e.target.value})} />
@@ -1040,3 +1068,4 @@ const Contracts = () => {
 };
 
 export default Contracts;
+  
